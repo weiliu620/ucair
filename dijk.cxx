@@ -104,7 +104,7 @@ int main(int argc, char* argv[])
      lemon::StaticDigraph::NodeMap<double> distmap(g);
      dijkstra.distMap(distmap);
      dijkstra.init();
-     std::cout << nodemapPtr->GetLargestPossibleRegion().GetSize() << std::endl;
+
      int node_id = nodemapPtr->GetPixel(seedIdx);
      lemon::StaticDigraph::Node s = g.node(node_id);
      dijkstra.addSource(s);
@@ -114,20 +114,36 @@ int main(int argc, char* argv[])
      // find all the target nodes.
      std::set<lemon::StaticDigraph::Node> target_set;
      find_target_nodes(target_set, g, maskPtr, nodemapPtr, par);
+     std::cout << "Total number of target nodes: " << target_set.size() << std::endl;
+
+     // debug. save all target node to volume. 
+     // define a volume for the accumulated path score.
+     ImageType3DU::Pointer targetnodePtr = ImageType3DU::New();
+     targetnodePtr->SetRegions(maskPtr->GetLargestPossibleRegion());
+     targetnodePtr->Allocate();
+     targetnodePtr->FillBuffer(0);
+     targetnodePtr->SetOrigin( maskPtr->GetOrigin() );
+     targetnodePtr->SetSpacing(maskPtr->GetSpacing() );
+     targetnodePtr->SetDirection(maskPtr->GetDirection() );
+     // save target node to volume.
      for (std::set<lemon::StaticDigraph::Node>::iterator it = target_set.begin(); it != target_set.end(); ++ it) {
-	  std::cout << ' ' << g.id(*it);
+	  targetnodePtr->SetPixel(ijkmap[*it], 1);
      }
+     save_volume(targetnodePtr, "targetnodes.nii.gz");
+     
      
      lemon::StaticDigraph::Node t = g.node(node_id);
 
      // define a map to save accumulated path score. 
      lemon::StaticDigraph::NodeMap<double> scoremap(g, 0);
-     lemon::Path<lemon::StaticDigraph> p = dijkstra.path(t);
-     for (lemon::Path<lemon::StaticDigraph>::ArcIt it(p); it != lemon::INVALID; ++ it) {
+     lemon::Path<lemon::StaticDigraph> this_path;
+     for (std::set<lemon::StaticDigraph::Node>::iterator it = target_set.begin(); it != target_set.end(); ++ it) {
+	  this_path = dijkstra.path(*it);
+	  for (lemon::Path<lemon::StaticDigraph>::ArcIt it(this_path); it != lemon::INVALID; ++ it) {
 	  
-	  scoremap[g.source(it)] ++;
+	       scoremap[g.source(it)] ++;
+	  }
      }
-     // accu_score(g, t, scoremap, dijkstra);
 
      // define a volume for the accumulated path score.
      ImageType3DU::Pointer scorePtr = ImageType3DU::New();
@@ -261,43 +277,6 @@ int build_cost_map(lemon::StaticDigraph & g,
      }
 }
 
-// int costmap_to_volume(lemon::StaticDigraph & g,
-// 		      lemon::StaticDigraph::NodeMap<double> & distmap,
-// 		      lemon::StaticDigraph::NodeMap<itk::Index<3> > & ijkmap,		   
-// 		      ImageType3DF::Pointer costPtr)
-// {
-//      for (lemon::StaticDigraph::NodeIt nodeIt(g); nodeIt !=lemon::INVALID; ++ nodeIt) {
-// 	  costPtr->SetPixel(ijkmap[nodeIt], distmap[nodeIt]);
-//      }
-
-//      return 0;
-// }
-
-
-// int scoremap_to_volume(lemon::StaticDigraph & g,
-// 		      lemon::StaticDigraph::NodeMap<double> & distmap,
-// 		      lemon::StaticDigraph::NodeMap<itk::Index<3> > & ijkmap,		   
-// 		      ImageType3DU::Pointer scorePtr)
-// {
-//      for (lemon::StaticDigraph::NodeIt nodeIt(g); nodeIt !=lemon::INVALID; ++ nodeIt) {
-// 	  scorePtr->SetPixel(ijkmap[nodeIt], distmap[nodeIt]);
-//      }
-
-//      return 0;
-// }
-
-// int accu_score(lemon::StaticDigraph & g,
-// 	       lemon::StaticDigraph::Node t,
-// 	       lemon::StaticDigraph::NodeMap<double> & scoremap,
-// 	       lemon::Dijkstra<lemon::StaticDigraph, CostMap> & dijkstra)
-// {
-//      lemon::Path<lemon::StaticDigraph> p = dijkstra.path(t);
-//      for (lemon::Path<lemon::StaticDigraph>::ArcIt it(p); it != lemon::INVALID; ++ it) {
-	  
-// 	  scoremap[g.source(it)] ++;
-//      }
-// }
-
 int find_target_nodes(std::set<lemon::StaticDigraph::Node> & target_set,
 		      lemon::StaticDigraph & g,
 		      ImageType3DC::Pointer maskPtr,
@@ -334,29 +313,46 @@ int find_target_nodes(std::set<lemon::StaticDigraph::Node> & target_set,
      std::vector<std::pair<int,int> > arcs;
      unsigned short offset = 0;
      unsigned cur_node_id = 0, nbr_node_id = 0;
-     for (maskIt.GoToBegin(), nodemapIt.GoToBegin(); !maskIt.IsAtEnd(); ++ maskIt, ++ nodemapIt) {
-	  if (maskIt.GetCenterPixel() > 0) {
-	       unsigned neiIdx = 0;
-	       bool outside_nbr = false; // one neighbor is outside mask. 
-	       while(neiIdx < par.n_nbrs && outside_nbr) {
-	       // for (unsigned neiIdx = 0; neiIdx < par.n_nbrs; neiIdx ++) {
-		    offset = nei_set_array[neiIdx];
-		    if (maskIt.GetPixel(offset) <= 0) {
-			 // tell if one neighbor is outside.
-			 outside_nbr = true;
-			 std::cout << "find_target_nodes(): found " << maskIt.GetIndex() << std::endl;
+     ImageType3DC::SizeType maskSize = maskPtr->GetLargestPossibleRegion().GetSize();
+     if (maskSize[2] == 1) { // 2D image.
+	  for (maskIt.GoToBegin(), nodemapIt.GoToBegin(); !maskIt.IsAtEnd(); ++ maskIt, ++ nodemapIt) {
+	       if (maskIt.GetCenterPixel() > 0) {
+		    if (maskIt.GetPixel(10) <=0 || maskIt.GetPixel(12) <= 0 || maskIt.GetPixel(14) <= 0 || maskIt.GetPixel(16) <= 0) {
+			 // one neighbor falls outside of mask. Current voxel
+			 // must be on boundary.
+			 cur_node_id = nodemapIt.Get();
+			 target_set.insert(g.node(cur_node_id));
 		    }
-		    neiIdx ++;
-	       } // while
-
-	       if (outside_nbr) {
-		    // one neighbor falls outside of mask. Current voxel
-		    // must be on boundary.
-		    cur_node_id = nodemapIt.Get();
-		    target_set.insert(g.node(cur_node_id));
 	       }
-	  }
-     } // maskIt
+	  } // maskIt
+     }
+
+     else { // 3D volume
+	  for (maskIt.GoToBegin(), nodemapIt.GoToBegin(); !maskIt.IsAtEnd(); ++ maskIt, ++ nodemapIt) {
+	       if (maskIt.GetCenterPixel() > 0) {
+		    unsigned neiIdx = 0;
+		    bool outside_nbr = false; // one neighbor is outside mask. 
+		    do {
+			 // for (unsigned neiIdx = 0; neiIdx < par.n_nbrs; neiIdx ++) {
+			 offset = nei_set_array[neiIdx];
+			 if (maskIt.GetPixel(offset) <= 0) {
+			      // tell if one neighbor is outside.
+			      outside_nbr = true;
+			      // std::cout << "find_target_nodes(): found " << maskIt.GetIndex() << std::endl;
+			 }
+			 neiIdx ++;
+		    }
+		    while(neiIdx < par.n_nbrs && !outside_nbr);
+
+		    if (outside_nbr) {
+			 // one neighbor falls outside of mask. Current voxel
+			 // must be on boundary.
+			 cur_node_id = nodemapIt.Get();
+			 target_set.insert(g.node(cur_node_id));
+		    }
+	       }
+	  } // maskIt
+     }
 
      return 0;
 }
