@@ -70,6 +70,9 @@ typedef itk::ImageRegionIterator< ImageType3DU>       IteratorType3DU;
 typedef itk::ImageRegionIterator< ImageType3DS>       IteratorType3DS;
 typedef itk::ImageRegionIterator< ImageType4DF>       IteratorType4DF;
 
+typedef lemon::StaticDigraph::ArcMap<double> CostMap;
+
+
 #define EPS 1e-6
 #define PI 3.14159265
 

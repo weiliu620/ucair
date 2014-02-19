@@ -1,4 +1,5 @@
 #include <common.h>
+#include <utility.h>
 
 int build_graph(lemon::StaticDigraph & g,
 		ImageType3DC::Pointer maskPtr,
@@ -15,12 +16,11 @@ int build_cost_map(lemon::StaticDigraph & g,
 		   lemon::StaticDigraph::NodeMap<itk::Index<3> > & ijkmap,		   
 		   lemon::StaticDigraph::ArcMap<double> & costmap);
 
-int costmap_to_volume(lemon::StaticDigraph & g,
-		      lemon::StaticDigraph::NodeMap<double> & distmap,
-		      lemon::StaticDigraph::NodeMap<itk::Index<3> > & ijkmap,		   
-		      ImageType3DF::Pointer costPtr);
-
-int save_volume(ImageType3DF::Pointer ptr, std::string filename);
+int find_target_nodes(std::set<lemon::StaticDigraph::Node> & target_set,
+		      lemon::StaticDigraph & g,
+		      ImageType3DC::Pointer maskPtr,
+		      ImageType3DU::Pointer nodemapPtr,
+		      const ParType & par);
 
 namespace po = boost::program_options;
 int main(int argc, char* argv[])
@@ -95,7 +95,6 @@ int main(int argc, char* argv[])
      build_ijk_map(g, ijkmap, maskPtr, nodemapPtr);
 
      // define the cost of the arcs and init to zero.
-     typedef lemon::StaticDigraph::ArcMap<double> CostMap;
      CostMap costmap(g, 0);
      // build cost map based on the vesselness volume.
      build_cost_map(g, vnessPtr, ijkmap, costmap);
@@ -111,6 +110,39 @@ int main(int argc, char* argv[])
      dijkstra.addSource(s);
      dijkstra.start();
 
+
+     // find all the target nodes.
+     std::set<lemon::StaticDigraph::Node> target_set;
+     find_target_nodes(target_set, g, maskPtr, nodemapPtr, par);
+     for (std::set<lemon::StaticDigraph::Node>::iterator it = target_set.begin(); it != target_set.end(); ++ it) {
+	  std::cout << ' ' << g.id(*it);
+     }
+     
+     lemon::StaticDigraph::Node t = g.node(node_id);
+
+     // define a map to save accumulated path score. 
+     lemon::StaticDigraph::NodeMap<double> scoremap(g, 0);
+     lemon::Path<lemon::StaticDigraph> p = dijkstra.path(t);
+     for (lemon::Path<lemon::StaticDigraph>::ArcIt it(p); it != lemon::INVALID; ++ it) {
+	  
+	  scoremap[g.source(it)] ++;
+     }
+     // accu_score(g, t, scoremap, dijkstra);
+
+     // define a volume for the accumulated path score.
+     ImageType3DU::Pointer scorePtr = ImageType3DU::New();
+     scorePtr->SetRegions(maskPtr->GetLargestPossibleRegion());
+     scorePtr->Allocate();
+     scorePtr->FillBuffer(0);
+     scorePtr->SetOrigin( maskPtr->GetOrigin() );
+     scorePtr->SetSpacing(maskPtr->GetSpacing() );
+     scorePtr->SetDirection(maskPtr->GetDirection() );
+
+     // save to volume.
+     for (lemon::StaticDigraph::NodeIt nodeIt(g); nodeIt !=lemon::INVALID; ++ nodeIt) {
+	  scorePtr->SetPixel(ijkmap[nodeIt], scoremap[nodeIt]);
+     }
+
      // define a volume to save the accumulative cost.
      ImageType3DF::Pointer costPtr = ImageType3DF::New();
      costPtr->SetRegions(maskPtr->GetLargestPossibleRegion());
@@ -121,9 +153,12 @@ int main(int argc, char* argv[])
      costPtr->SetDirection(maskPtr->GetDirection() );
 
      // update accumulative cost volume from distmap.
-     costmap_to_volume(g, distmap, ijkmap, costPtr);
-     
+     for (lemon::StaticDigraph::NodeIt nodeIt(g); nodeIt !=lemon::INVALID; ++ nodeIt) {
+	  costPtr->SetPixel(ijkmap[nodeIt], distmap[nodeIt]);
+     }
+
      save_volume(costPtr, "cost.nii.gz");
+     save_volume(scorePtr, "score.nii.gz");
 
      return 0;
 }
@@ -226,37 +261,102 @@ int build_cost_map(lemon::StaticDigraph & g,
      }
 }
 
-int costmap_to_volume(lemon::StaticDigraph & g,
-		      lemon::StaticDigraph::NodeMap<double> & distmap,
-		      lemon::StaticDigraph::NodeMap<itk::Index<3> > & ijkmap,		   
-		      ImageType3DF::Pointer costPtr)
+// int costmap_to_volume(lemon::StaticDigraph & g,
+// 		      lemon::StaticDigraph::NodeMap<double> & distmap,
+// 		      lemon::StaticDigraph::NodeMap<itk::Index<3> > & ijkmap,		   
+// 		      ImageType3DF::Pointer costPtr)
+// {
+//      for (lemon::StaticDigraph::NodeIt nodeIt(g); nodeIt !=lemon::INVALID; ++ nodeIt) {
+// 	  costPtr->SetPixel(ijkmap[nodeIt], distmap[nodeIt]);
+//      }
+
+//      return 0;
+// }
+
+
+// int scoremap_to_volume(lemon::StaticDigraph & g,
+// 		      lemon::StaticDigraph::NodeMap<double> & distmap,
+// 		      lemon::StaticDigraph::NodeMap<itk::Index<3> > & ijkmap,		   
+// 		      ImageType3DU::Pointer scorePtr)
+// {
+//      for (lemon::StaticDigraph::NodeIt nodeIt(g); nodeIt !=lemon::INVALID; ++ nodeIt) {
+// 	  scorePtr->SetPixel(ijkmap[nodeIt], distmap[nodeIt]);
+//      }
+
+//      return 0;
+// }
+
+// int accu_score(lemon::StaticDigraph & g,
+// 	       lemon::StaticDigraph::Node t,
+// 	       lemon::StaticDigraph::NodeMap<double> & scoremap,
+// 	       lemon::Dijkstra<lemon::StaticDigraph, CostMap> & dijkstra)
+// {
+//      lemon::Path<lemon::StaticDigraph> p = dijkstra.path(t);
+//      for (lemon::Path<lemon::StaticDigraph>::ArcIt it(p); it != lemon::INVALID; ++ it) {
+	  
+// 	  scoremap[g.source(it)] ++;
+//      }
+// }
+
+int find_target_nodes(std::set<lemon::StaticDigraph::Node> & target_set,
+		      lemon::StaticDigraph & g,
+		      ImageType3DC::Pointer maskPtr,
+		      ImageType3DU::Pointer nodemapPtr,
+		      const ParType & par)
 {
-     for (lemon::StaticDigraph::NodeIt nodeIt(g); nodeIt !=lemon::INVALID; ++ nodeIt) {
-	  costPtr->SetPixel(ijkmap[nodeIt], distmap[nodeIt]);
+     typedef itk::NeighborhoodIterator< ImageType3DC> NeighborhoodIteratorType;
+     typedef itk::ConstantBoundaryCondition<ImageType3DC>  BoundaryConditionType;
+
+     // Define neighborhood iterator on mask.
+     NeighborhoodIteratorType::RadiusType radius;
+     radius.Fill(1);
+     NeighborhoodIteratorType maskIt(radius, maskPtr, maskPtr->GetLargestPossibleRegion() );
+     BoundaryConditionType constCondition;
+     constCondition.SetConstant(-1);     
+     maskIt.OverrideBoundaryCondition(&constCondition);
+
+     ImageType3DU::IndexType nodemapIdx;
+     
+     // xplus, xminus, yplus, yminus, zplus, zminus
+     // std::array<unsigned int, 6 > neiIdxSet = {{14, 12, 16, 10, 22, 4}}; 
+     unsigned int nei_set_array[] = {4, 10, 12, 14, 16, 22, // 6 neighborhood
+				     1, 3, 5, 7, 9, 11, 15, 17, 19, 21, 23, 25, // 18 neighborhood
+				     0, 2, 6, 8, 18, 20, 24, 26}; // 26 neighborhood
+
+     if (par.n_nbrs != 6 && par.n_nbrs != 18 && par.n_nbrs != 26) {
+	  printf("build_graph(): number of neighbors must be 6, 18, or 26. Other values may give inacruate results!\n");
+	  exit(1);
      }
 
-     return 0;
-}
+     IteratorType3DU nodemapIt(nodemapPtr, nodemapPtr->GetLargestPossibleRegion());
 
-int save_volume(ImageType3DF::Pointer ptr, std::string filename)
-{
+     // build edges.
+     std::vector<std::pair<int,int> > arcs;
+     unsigned short offset = 0;
+     unsigned cur_node_id = 0, nbr_node_id = 0;
+     for (maskIt.GoToBegin(), nodemapIt.GoToBegin(); !maskIt.IsAtEnd(); ++ maskIt, ++ nodemapIt) {
+	  if (maskIt.GetCenterPixel() > 0) {
+	       unsigned neiIdx = 0;
+	       bool outside_nbr = false; // one neighbor is outside mask. 
+	       while(neiIdx < par.n_nbrs && outside_nbr) {
+	       // for (unsigned neiIdx = 0; neiIdx < par.n_nbrs; neiIdx ++) {
+		    offset = nei_set_array[neiIdx];
+		    if (maskIt.GetPixel(offset) <= 0) {
+			 // tell if one neighbor is outside.
+			 outside_nbr = true;
+			 std::cout << "find_target_nodes(): found " << maskIt.GetIndex() << std::endl;
+		    }
+		    neiIdx ++;
+	       } // while
 
-     WriterType3DF::Pointer writer = WriterType3DF::New();
-	  
-     writer->SetInput(ptr);
-     writer->SetFileName(filename);
-     try 
-     { 
-	  writer->Update(); 
-     } 
-     catch( itk::ExceptionObject & err ) 
-     { 
-	  std::cerr << "ExceptionObject caught !" << std::endl; 
-	  std::cerr << err << std::endl; 
-	  return EXIT_FAILURE;
-     } 
-
-     std::cout << "save_volume(): File " << filename << " saved.\n";
+	       if (outside_nbr) {
+		    // one neighbor falls outside of mask. Current voxel
+		    // must be on boundary.
+		    cur_node_id = nodemapIt.Get();
+		    target_set.insert(g.node(cur_node_id));
+	       }
+	  }
+     } // maskIt
 
      return 0;
 }

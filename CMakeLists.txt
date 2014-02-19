@@ -67,6 +67,7 @@ if(Boost_FOUND)
   include_directories(${Boost_INCLUDE_DIRS})
   add_executable(dijk
     dijk.cxx
+    utility.cxx
     )
   
   target_link_libraries(dijk ${ITK_LIBRARIES} ${Boost_LIBRARIES})
