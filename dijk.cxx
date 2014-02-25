@@ -105,45 +105,55 @@ int main(int argc, char* argv[])
      dijkstra.distMap(distmap);
      dijkstra.init();
 
-     int node_id = nodemapPtr->GetPixel(seedIdx);
-     lemon::StaticDigraph::Node s = g.node(node_id);
+     lemon::StaticDigraph::Node s = g.node( nodemapPtr->GetPixel(seedIdx) );
      dijkstra.addSource(s);
      dijkstra.start();
 
 
      // find all the target nodes.
      std::set<lemon::StaticDigraph::Node> target_set;
-     find_target_nodes(target_set, g, maskPtr, nodemapPtr, par);
-     std::cout << "Total number of target nodes: " << target_set.size() << std::endl;
+     // find_target_nodes(target_set, g, maskPtr, nodemapPtr, par);
+     // std::cout << "Total number of target nodes: " << target_set.size() << std::endl;
 
      // debug. save all target node to volume. 
      // define a volume for the accumulated path score.
-     ImageType3DU::Pointer targetnodePtr = ImageType3DU::New();
-     targetnodePtr->SetRegions(maskPtr->GetLargestPossibleRegion());
-     targetnodePtr->Allocate();
-     targetnodePtr->FillBuffer(0);
-     targetnodePtr->SetOrigin( maskPtr->GetOrigin() );
-     targetnodePtr->SetSpacing(maskPtr->GetSpacing() );
-     targetnodePtr->SetDirection(maskPtr->GetDirection() );
-     // save target node to volume.
-     for (std::set<lemon::StaticDigraph::Node>::iterator it = target_set.begin(); it != target_set.end(); ++ it) {
-	  targetnodePtr->SetPixel(ijkmap[*it], 1);
-     }
-     save_volume(targetnodePtr, "targetnodes.nii.gz");
+     // ImageType3DU::Pointer targetnodePtr = ImageType3DU::New();
+     // targetnodePtr->SetRegions(maskPtr->GetLargestPossibleRegion());
+     // targetnodePtr->Allocate();
+     // targetnodePtr->FillBuffer(0);
+     // targetnodePtr->SetOrigin( maskPtr->GetOrigin() );
+     // targetnodePtr->SetSpacing(maskPtr->GetSpacing() );
+     // targetnodePtr->SetDirection(maskPtr->GetDirection() );
+     // // save target node to volume.
+     // for (std::set<lemon::StaticDigraph::Node>::iterator it = target_set.begin(); it != target_set.end(); ++ it) {
+     // 	  targetnodePtr->SetPixel(ijkmap[*it], 1);
+     // }
+     // save_volume(targetnodePtr, "targetnodes.nii.gz");
      
      
-     lemon::StaticDigraph::Node t = g.node(node_id);
+     // lemon::StaticDigraph::Node t = g.node(node_id);
 
      // define a map to save accumulated path score. 
      lemon::StaticDigraph::NodeMap<double> scoremap(g, 0);
      lemon::Path<lemon::StaticDigraph> this_path;
-     for (std::set<lemon::StaticDigraph::Node>::iterator it = target_set.begin(); it != target_set.end(); ++ it) {
-	  this_path = dijkstra.path(*it);
-	  for (lemon::Path<lemon::StaticDigraph>::ArcIt it(this_path); it != lemon::INVALID; ++ it) {
+     // for (std::set<lemon::StaticDigraph::Node>::iterator it = target_set.begin(); it != target_set.end(); ++ it) {
+     // 	  this_path = dijkstra.path(*it);
+     // 	  for (lemon::Path<lemon::StaticDigraph>::ArcIt it(this_path); it != lemon::INVALID; ++ it) {
 	  
-	       scoremap[g.source(it)] ++;
-	  }
+     // 	       scoremap[g.source(it)] ++;
+     // 	  }
+     // }
+
+     unsigned path_id = 0;
+     for (lemon::StaticDigraph::NodeIt it(g); it != lemon::INVALID && path_id < 5000000; ++ it) {
+     	  this_path = dijkstra.path(it);
+     	  for (lemon::Path<lemon::StaticDigraph>::ArcIt it(this_path); it != lemon::INVALID; ++ it) {
+	  
+     	       scoremap[g.source(it)] ++;
+     	  }
+	  path_id ++;
      }
+
 
      // define a volume for the accumulated path score.
      ImageType3DU::Pointer scorePtr = ImageType3DU::New();
@@ -158,23 +168,24 @@ int main(int argc, char* argv[])
      for (lemon::StaticDigraph::NodeIt nodeIt(g); nodeIt !=lemon::INVALID; ++ nodeIt) {
 	  scorePtr->SetPixel(ijkmap[nodeIt], scoremap[nodeIt]);
      }
-
-     // define a volume to save the accumulative cost.
-     ImageType3DF::Pointer costPtr = ImageType3DF::New();
-     costPtr->SetRegions(maskPtr->GetLargestPossibleRegion());
-     costPtr->Allocate();
-     costPtr->FillBuffer(0);
-     costPtr->SetOrigin( maskPtr->GetOrigin() );
-     costPtr->SetSpacing(maskPtr->GetSpacing() );
-     costPtr->SetDirection(maskPtr->GetDirection() );
-
-     // update accumulative cost volume from distmap.
-     for (lemon::StaticDigraph::NodeIt nodeIt(g); nodeIt !=lemon::INVALID; ++ nodeIt) {
-	  costPtr->SetPixel(ijkmap[nodeIt], distmap[nodeIt]);
-     }
-
-     save_volume(costPtr, "cost.nii.gz");
      save_volume(scorePtr, "score.nii.gz");
+
+     // // define a volume to save the accumulative cost.
+     // ImageType3DF::Pointer costPtr = ImageType3DF::New();
+     // costPtr->SetRegions(maskPtr->GetLargestPossibleRegion());
+     // costPtr->Allocate();
+     // costPtr->FillBuffer(0);
+     // costPtr->SetOrigin( maskPtr->GetOrigin() );
+     // costPtr->SetSpacing(maskPtr->GetSpacing() );
+     // costPtr->SetDirection(maskPtr->GetDirection() );
+
+     // // update accumulative cost volume from distmap.
+     // for (lemon::StaticDigraph::NodeIt nodeIt(g); nodeIt !=lemon::INVALID; ++ nodeIt) {
+     // 	  costPtr->SetPixel(ijkmap[nodeIt], distmap[nodeIt]);
+     // }
+
+     // save_volume(costPtr, "cost.nii.gz");
+
 
      return 0;
 }

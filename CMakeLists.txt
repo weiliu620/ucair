@@ -69,7 +69,19 @@ if(Boost_FOUND)
     dijk.cxx
     utility.cxx
     )
+
+  add_executable(test_hessian_filter
+    test_hessian_filter
+    )
+
+  add_executable(multiscale_hessian
+    multiscale_hessian.cxx
+    )
+  
+  
   
   target_link_libraries(dijk ${ITK_LIBRARIES} ${Boost_LIBRARIES})
+  target_link_libraries(test_hessian_filter ${ITK_LIBRARIES})
+  target_link_libraries(multiscale_hessian ${ITK_LIBRARIES} ${Boost_LIBRARIES})
 endif()
 
