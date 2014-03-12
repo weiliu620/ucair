@@ -76,12 +76,66 @@ if(Boost_FOUND)
 
   add_executable(multiscale_hessian
     multiscale_hessian.cxx
+    utility.cxx
     )
-  
-  
+
+  add_executable(opening_filter
+    opening_filter
+    utility.cxx
+    )
+
+  add_executable(closing_filter
+    closing_filter
+    utility.cxx
+    )
+
+  add_executable(dilation_filter
+    dilation_filter
+    utility.cxx
+    )
+
+  add_executable(erosion_filter
+    erosion_filter
+    utility.cxx
+    )
+
+  add_executable(connected_comp
+    connected_comp
+    utility.cxx
+    )
+
+  add_executable(fillhole_filter
+    fillhole_filter.cxx
+    utility.cxx
+    )
+
+  add_executable(voting_fillhole_filter
+    voting_fillhole_filter.cxx
+    utility.cxx
+    )
+
+  add_executable(binary_fillhole
+    binary_fillhole.cxx
+    )
+
+  add_executable(my_hessian_test
+    my_hessian_test.cxx
+    hessian_eigenvector.cxx
+    utility.cxx
+    )
   
   target_link_libraries(dijk ${ITK_LIBRARIES} ${Boost_LIBRARIES})
   target_link_libraries(test_hessian_filter ${ITK_LIBRARIES})
   target_link_libraries(multiscale_hessian ${ITK_LIBRARIES} ${Boost_LIBRARIES})
+  target_link_libraries(opening_filter ${ITK_LIBRARIES} ${Boost_LIBRARIES})
+  target_link_libraries(closing_filter ${ITK_LIBRARIES} ${Boost_LIBRARIES})
+  target_link_libraries(dilation_filter ${ITK_LIBRARIES} ${Boost_LIBRARIES})
+  target_link_libraries(erosion_filter ${ITK_LIBRARIES} ${Boost_LIBRARIES})
+  target_link_libraries(connected_comp ${ITK_LIBRARIES} ${Boost_LIBRARIES})
+  target_link_libraries(fillhole_filter ${ITK_LIBRARIES} ${Boost_LIBRARIES})
+  target_link_libraries(voting_fillhole_filter ${ITK_LIBRARIES} ${Boost_LIBRARIES})
+
+  target_link_libraries(binary_fillhole ${ITK_LIBRARIES})
+  target_link_libraries(my_hessian_test ${ITK_LIBRARIES} ${Boost_LIBRARIES})
 endif()
 

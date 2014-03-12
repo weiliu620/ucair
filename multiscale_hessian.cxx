@@ -4,7 +4,7 @@
 #include "itkImageFileReader.h"
 #include "itkImageFileWriter.h"
 #include "itkHessianToObjectnessMeasureImageFilter.h"
-#include "myMultiScaleHessianBasedMeasureImageFilter.h"
+#include "itkMultiScaleHessianBasedMeasureImageFilter.h"
 #include "itkRescaleIntensityImageFilter.h"
 
 namespace po = boost::program_options;
@@ -74,7 +74,7 @@ int main( int argc, char* argv[] )
     ObjectnessFilterType;
   ObjectnessFilterType::Pointer objectnessFilter = ObjectnessFilterType::New();
   objectnessFilter->SetBrightObject( true );
-  objectnessFilter->SetScaleObjectnessMeasure( false );
+  objectnessFilter->SetScaleObjectnessMeasure( true );
   objectnessFilter->SetAlpha( alpha );
   objectnessFilter->SetBeta( beta );
   objectnessFilter->SetGamma( gamma );
@@ -82,7 +82,7 @@ int main( int argc, char* argv[] )
   // debug.
   std::cout << "objectnessFilter's object dimension: " << objectnessFilter->GetObjectDimension() << std::endl;
 
-  typedef itk::MultiScaleHessianBasedMeasureImageFilter< ImageType, HessianImageType, ImageType, ImageType >
+  typedef itk::MultiScaleHessianBasedMeasureImageFilter< ImageType, HessianImageType, ImageType >
     MultiScaleEnhancementFilterType;
   MultiScaleEnhancementFilterType::Pointer multiScaleEnhancementFilter =
     MultiScaleEnhancementFilterType::New();
@@ -96,14 +96,19 @@ int main( int argc, char* argv[] )
 
   multiScaleEnhancementFilter->SetGenerateScalesOutput(true);
   multiScaleEnhancementFilter->SetGenerateHessianOutput(true);
-  std::cout << "generate scale outputs status: " << multiScaleEnhancementFilter->GetGenerateScalesOutput() << std::endl;
-  std::cout << "generate Hessian outputs status: " << multiScaleEnhancementFilter->GetGenerateHessianOutput() << std::endl;
+  // std::cout << "generate scale outputs status: " << multiScaleEnhancementFilter->GetGenerateScalesOutput() << std::endl;
+  // std::cout << "generate Hessian outputs status: " << multiScaleEnhancementFilter->GetGenerateHessianOutput() << std::endl;
+
+  std::cout << multiScaleEnhancementFilter << std::endl;
   
   typedef itk::RescaleIntensityImageFilter< ImageType, ImageType3DUC >  RescaleFilterType;
   RescaleFilterType::Pointer rescaleFilter = RescaleFilterType::New();
   rescaleFilter->SetInput( multiScaleEnhancementFilter->GetOutput() );
   
-  save_volume(rescaleFilter->GetOutput(), outputFileName);
+  // save_volume(rescaleFilter->GetOutput(), outputFileName);
+
+  multiScaleEnhancementFilter->Update();
+  save_volume(multiScaleEnhancementFilter->GetOutput(), outputFileName);
 
   // also save the scale map. 
   WriterType3DF::Pointer scale_writer = WriterType3DF::New();

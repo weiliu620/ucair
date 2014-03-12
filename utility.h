@@ -1,3 +1,9 @@
 int save_volume(ImageType3DU::Pointer ptr, std::string filename);
+int save_volume(ImageType3DI::Pointer ptr, std::string filename);
 int save_volume(ImageType3DF::Pointer ptr, std::string filename);
-
+int save_volume(ImageType3DU::Pointer ptr, std::string filename);
+int save_volume(ImageType3DC::Pointer ptr, std::string filename);
+int save_volume(ImageType3DUC::Pointer ptr, std::string filename);
+int save_volume(ImageType3B::Pointer ptr, std::string filename);
+int save_volume(ImageType2UC::Pointer ptr, std::string filename);
+int save_volume(ImageType3D::Pointer ptr, std::string filename);
