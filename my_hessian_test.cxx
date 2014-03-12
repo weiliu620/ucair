@@ -1,6 +1,6 @@
 #include <common.h>
 #include <utility.h>
-
+#include "hessian_eigenvector.h"
 #include "itkImageFileReader.h"
 #include "itkImageFileWriter.h"
 #include "itkHessianRecursiveGaussianImageFilter.h"
@@ -12,9 +12,9 @@ namespace po = boost::program_options;
 int main( int argc, char* argv[] )
 {
      const unsigned int Dimension = 3;
-     std::string input_file, vesselness_file, eigenvector_file;
-     // double sigmaMinimum = 1.0;
-     // double sigmaMaximum = 10.0;
+     std::string input_file, vesselness_file, eigenvector_file, mask_file, scalemapFileName;
+     double sigmaMinimum = 1.0;
+     double sigmaMaximum = 10.0;
      double alpha = 0.5, beta = 1, gamma = 5;
      unsigned int numberOfSigmaSteps = 10;
      unsigned short verbose = 0;
@@ -27,12 +27,14 @@ int main( int argc, char* argv[] )
 	   "Output vesselness file name.")
 	  ("eigenvector,e", po::value<std::string>(&eigenvector_file)->default_value("eigenvector.nii.gz"), 
 	   "Output file name.")
-	  // ("scalemap,c", po::value<std::string>(&scalemapFileName)->default_value("scale_map.nii.gz"), 
-	  //  "scale map file name.")
-	  // ("min,m", po::value<double>(&sigmaMinimum)->default_value(1), 
-	  //  "Minimal sigma")
-	  // ("max,x", po::value<double>(&sigmaMaximum)->default_value(10), 
-	  //  "Maxmal sigma")
+	  ("mask,m", po::value<std::string>(&mask_file)->default_value("mask.nii.gz"), 
+	   "mask file. Must be binary.")
+	  ("scalemap,c", po::value<std::string>(&scalemapFileName)->default_value("scale_map.nii.gz"), 
+	   "scale map file name.")
+	  ("min,n", po::value<double>(&sigmaMinimum)->default_value(1), 
+	   "Minimal sigma")
+	  ("max,x", po::value<double>(&sigmaMaximum)->default_value(10), 
+	   "Maxmal sigma")
 
 	  ("alpha,a", po::value<double>(&alpha)->default_value(0.5), 
 	   "Alpha for Hessian filter.")
@@ -41,8 +43,8 @@ int main( int argc, char* argv[] )
 	  ("gamma,g", po::value<double>(&gamma)->default_value(5), 
 	   "Gamma for Hessian filter.")
 
-	  // ("steps,s", po::value<unsigned int>(&numberOfSigmaSteps)->default_value(10), 
-	  //  "Number of sigma steps.")
+	  ("steps,s", po::value<unsigned int>(&numberOfSigmaSteps)->default_value(10), 
+	   "Number of sigma steps.")
 
 	  ("verbose,v", po::value<unsigned short>(&verbose)->default_value(0), 
 	   "verbose level. 0 for minimal output. 3 for most output.");
@@ -70,9 +72,20 @@ int main( int argc, char* argv[] )
      inReader->Update();
      ImageType3D::Pointer inPtr = inReader->GetOutput();
 
-     typedef itk::HessianRecursiveGaussianImageFilter<ImageType3D >     HessianFilterType;
-     HessianFilterType::Pointer hessianFilter = HessianFilterType::New();
-     hessianFilter->SetInput(inPtr);
+     // read mask file
+     ReaderType3UC::Pointer maskReader = ReaderType3UC::New();
+     maskReader->SetFileName(mask_file);
+     maskReader->Update();
+     ImageType3UC::Pointer maskPtr = maskReader->GetOutput();
+
+     // // define Hessian filter.
+     // typedef itk::HessianRecursiveGaussianImageFilter<ImageType3D >     HessianFilterType;
+     // HessianFilterType::Pointer hessianFilter = HessianFilterType::New();
+     // hessianFilter->SetInput(inPtr);
+     // hessianFilter->SetSigma(1);
+     // hessianFilter->Update();
+     // hessianFilter->SetNormalizeAcrossScale(true);
+     // std::cout << hessianFilter;
 
      // Create vesselness image buffer.
      ImageType3D::Pointer vesselnessPtr = ImageType3D::New();
@@ -89,30 +102,45 @@ int main( int argc, char* argv[] )
      eigenvectorPtr->Allocate();
      eigenvectorPtr->FillBuffer(itk::NumericTraits< ImageTypeArray3D::PixelType >::Zero);
 
-     hessianFilter->SetInput(inPtr);
-     hessianFilter->SetSigma(1);
-     hessianFilter->Update();
-
      HessianImageType::Pointer hessianPtr = HessianImageType::New();
 
-     hessian_eigenvector(hessianFilter->GetOutput(),
-     			 vesselnessPtr,
-     			 eigenvectorPtr);
+     // hessian_eigenvector(hessianFilter->GetOutput(),
+     // 			 vesselnessPtr,
+     // 			 eigenvectorPtr);
 
+     // save_volume(vesselnessPtr, vesselness_file);
+
+     // typedef itk::HessianToObjectnessMeasureImageFilter<HessianImageType, ImageType3D> VesselnessFilterType;
+     // VesselnessFilterType::Pointer vness_filter = VesselnessFilterType::New();
+     // vness_filter->SetInput(hessianFilter->GetOutput() );
+
+     // vness_filter->SetBrightObject( true);
+     // vness_filter->SetScaleObjectnessMeasure( true );
+     // vness_filter->SetAlpha( 0.5 );
+     // vness_filter->SetBeta( 0.5 );
+     // vness_filter->SetGamma( 5.0 );
+     // vness_filter->Update();
+     // std::cout << vness_filter;
+     // save_volume(vness_filter->GetOutput(), "ref_vesselness.nii.gz");
+
+     // test multiple scale hessian.
+
+     // create a scale image buffer.
+     ImageType3D::Pointer scalePtr = ImageType3D::New();
+     scalePtr->SetRegions(inPtr->GetLargestPossibleRegion() );
+     scalePtr->Allocate();
+     scalePtr->FillBuffer( 0 );
+     
+     multiscale_hessian(inPtr,
+			vesselnessPtr,
+			scalePtr,
+			eigenvectorPtr,
+			maskPtr,
+			sigmaMaximum,
+			sigmaMinimum,
+			numberOfSigmaSteps);
      save_volume(vesselnessPtr, vesselness_file);
-
-     typedef itk::HessianToObjectnessMeasureImageFilter<HessianImageType, ImageType3D> VesselnessFilterType;
-     VesselnessFilterType::Pointer vness_filter = VesselnessFilterType::New();
-     vness_filter->SetInput(hessianFilter->GetOutput() );
-
-     vness_filter->SetBrightObject( true);
-     vness_filter->SetScaleObjectnessMeasure( true );
-     vness_filter->SetAlpha( 0.5 );
-     vness_filter->SetBeta( 0.5 );
-     vness_filter->SetGamma( 5.0 );
-     vness_filter->Update();
-     std::cout << vness_filter;
-     save_volume(vness_filter->GetOutput(), "ref_vesselness.nii.gz");
+     save_volume(scalePtr, scalemapFileName);
       
 }
 

@@ -2,6 +2,7 @@
 #include <utility.h>
 #include "itkSymmetricSecondRankTensor.h"
 #include "itkSymmetricEigenAnalysis.h"
+#include <itkHessianRecursiveGaussianImageFilter.h>
 
 typedef double EigenValueType;
 typedef itk::FixedArray< EigenValueType, 3 > EigenValueArrayType;
@@ -141,3 +142,86 @@ bool AbsLessEqualCompare(EigenValueType a, EigenValueType b)
      return vnl_math_abs(a) <= vnl_math_abs(b);
 }
 
+int multiscale_hessian(ImageType3D::Pointer intensityPtr,
+		       ImageType3D::Pointer vesselnessPtr,
+		       ImageType3D::Pointer scalePtr,
+		       ImageTypeArray3D::Pointer eigenvectorPtr,
+		       ImageType3UC::Pointer maskPtr,
+		       double sigma_max,
+		       double sigma_min,
+		       unsigned n_steps)
+{
+     bool m_NonNegativeHessianBasedMeasure = true;
+     unsigned m_NumberOfSigmaSteps = 10;
+
+     // define buffer for eigenvector at a perticular scale.
+     ImageTypeArray3D::Pointer evPtr = ImageTypeArray3D::New();
+     evPtr->SetRegions(eigenvectorPtr->GetLargestPossibleRegion() );
+     evPtr->Allocate();
+     evPtr->FillBuffer(itk::NumericTraits< ImageTypeArray3D::PixelType >::Zero);
+
+     // define a vesselness buffer for a particular scale.
+     ImageType3D::Pointer vnessPtr = ImageType3D::New();
+     vnessPtr->SetRegions(vesselnessPtr->GetLargestPossibleRegion() );
+     vnessPtr->Allocate();
+     vnessPtr->FillBuffer(0);
+
+     // Define Hessian filter.
+     typedef itk::HessianRecursiveGaussianImageFilter<ImageType3D >     HessianFilterType;
+     HessianFilterType::Pointer hessianFilter = HessianFilterType::New();
+     hessianFilter->SetNormalizeAcrossScale(true);
+     hessianFilter->SetInput(intensityPtr);
+
+     // std::cout << hessianFilter;
+
+     double sigma = sigma_min;
+     int scaleLevel = 1;
+
+	  itk::ImageRegionIterator<ImageType3D> vnessIt(vnessPtr, vnessPtr->GetLargestPossibleRegion() );
+	  itk::ImageRegionIterator<ImageType3D> vesselnessIt(vesselnessPtr, vesselnessPtr->GetLargestPossibleRegion() );
+
+	  itk::ImageRegionIterator<ImageType3D> scaleIt(scalePtr, scalePtr->GetLargestPossibleRegion() );
+	  // itk::ImageRegionIterator<ImageType3D> scIt(scPtr, scPtr->GetLargestPossibleRegion() );
+
+	  itk::ImageRegionIterator<ImageTypeArray3D> eigenvectorIt(eigenvectorPtr, eigenvectorPtr->GetLargestPossibleRegion() );
+	  itk::ImageRegionIterator<ImageTypeArray3D> evIt(evPtr, evPtr->GetLargestPossibleRegion() );
+
+	  itk::ImageRegionIterator<ImageType3UC> maskIt(maskPtr, maskPtr->GetLargestPossibleRegion() );
+
+     while ( sigma <= sigma_max ) {
+	  if ( n_steps == 0 )
+	  {
+	       break;
+	  }
+
+	  hessianFilter->SetSigma(sigma);
+	  hessianFilter->Update();
+
+	  // compute vesselness and eigenvector.
+	  hessian_eigenvector(hessianFilter->GetOutput(), vnessPtr, evPtr);
+
+	  // update max response, scale and eigenvectors.
+
+	  for (vnessIt.GoToBegin(), vesselnessIt.GoToBegin(), eigenvectorIt.GoToBegin(), evIt.GoToBegin(), maskIt.GoToBegin(), scaleIt.GoToBegin();
+	       !maskIt.IsAtEnd();
+	       ++ vnessIt, ++ vesselnessIt, ++ eigenvectorIt, ++ evIt, ++ maskIt, ++ scaleIt) {
+	       if (vesselnessIt.Value() < vnessIt.Value() ) {
+		    vesselnessIt.Value() = vnessIt.Value();
+		    scaleIt.Value() = sigma;
+		    eigenvectorIt.Value() = evIt.Value();
+	       }
+	  }
+
+	  // compute sigma at next scale.
+	  if (n_steps < 2) return sigma_min;
+
+	  // assume the log steps.
+	  const double stepSize = vnl_math_max( 1e-10, ( vcl_log(sigma_max) - vcl_log(sigma_min) ) / ( n_steps - 1 ) );
+	  sigma = vcl_exp(vcl_log (sigma_min) + stepSize * scaleLevel);
+	  scaleLevel++;
+
+	  if ( m_NumberOfSigmaSteps == 1 ) break;
+
+     }
+
+}
