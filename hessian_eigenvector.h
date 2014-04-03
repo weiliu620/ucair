@@ -1,14 +1,16 @@
-int hessian_eigenvector(HessianImageType::Pointer hessianPtr,
-			ImageType3D::Pointer eigenvaluePtr,
-			ImageTypeArray3D::Pointer eigenvectorPtr);
+#include <common.h>
 
-int multiscale_hessian(ImageType3D::Pointer intensityPtr,
-		       ImageType3D::Pointer vesselnessPtr,
-		       ImageType3D::Pointer scalePtr,
-		       ImageTypeArray3D::Pointer eigenvectorPtr,
+int hessian_eigenvector(HessianImageType::Pointer hessianPtr,
+			ImageType3F::Pointer vesselnessPtr,
+			ImageTypeArray3F::Pointer eigenvectorPtr,
+			HessianPar par);
+int multiscale_hessian(ImageType3F::Pointer intensityPtr,
+		       ImageType3F::Pointer vesselnessPtr,
+		       ImageType3F::Pointer scalePtr,
+		       ImageTypeArray3F::Pointer eigenvectorPtr,
 		       ImageType3UC::Pointer maskPtr,
-		       double sigma_max,
-		       double sigma_min,
-		       unsigned n_steps);
+		       HessianPar par);
+
+int mytest(HessianImageType::Pointer hessianPtr);
 
 

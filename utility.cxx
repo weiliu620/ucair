@@ -183,3 +183,72 @@ int save_volume(ImageType3D::Pointer ptr, std::string filename)
 
      return 0;
 }
+
+int save_volume(ImageTypeArray3D::Pointer ptr, std::string filename)
+{
+
+     WriterTypeArray3D::Pointer writer = WriterTypeArray3D::New();
+	  
+     writer->SetInput(ptr);
+     writer->SetFileName(filename);
+     try 
+     { 
+	  writer->Update(); 
+     } 
+     catch( itk::ExceptionObject & err ) 
+     { 
+	  std::cerr << "ExceptionObject caught !" << std::endl; 
+	  std::cerr << err << std::endl; 
+	  return EXIT_FAILURE;
+     } 
+
+     std::cout << "save_volume(): File " << filename << " saved.\n";
+
+     return 0;
+}
+
+int save_volume(ImageTypeArray3F::Pointer ptr, std::string filename)
+{
+
+     WriterTypeArray3F::Pointer writer = WriterTypeArray3F::New();
+	  
+     writer->SetInput(ptr);
+     writer->SetFileName(filename);
+     try 
+     { 
+	  writer->Update(); 
+     } 
+     catch( itk::ExceptionObject & err ) 
+     { 
+	  std::cerr << "ExceptionObject caught !" << std::endl; 
+	  std::cerr << err << std::endl; 
+	  return EXIT_FAILURE;
+     } 
+
+     std::cout << "save_volume(): File " << filename << " saved.\n";
+
+     return 0;
+}
+
+int save_volume(ImageType4D::Pointer ptr, std::string filename)
+{
+
+     WriterType4D::Pointer writer = WriterType4D::New();
+	  
+     writer->SetInput(ptr);
+     writer->SetFileName(filename);
+     try 
+     { 
+	  writer->Update(); 
+     } 
+     catch( itk::ExceptionObject & err ) 
+     { 
+	  std::cerr << "ExceptionObject caught !" << std::endl; 
+	  std::cerr << err << std::endl; 
+	  return EXIT_FAILURE;
+     } 
+
+     std::cout << "save_volume(): File " << filename << " saved.\n";
+
+     return 0;
+}

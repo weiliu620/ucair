@@ -20,7 +20,7 @@ int main(int argc, char* argv[])
      unsigned short verbose = 0;
      float stop_time = 100;
 
-     po::options_description mydesc("Options can only used at commandline");
+     po::options_description mydesc("Fast marching segmentation.");
      mydesc.add_options()
 	  ("help,h", "Canny filter outputs the edge map.")
 	  ("int,i", po::value<std::string>(&in_file)->default_value("input.nii.gz"), 

@@ -65,9 +65,13 @@ find_package(Boost 1.53.0 REQUIRED COMPONENTS program_options filesystem system)
 if(Boost_FOUND)
   MESSAGE(STATUS "Project source dir: " ${PROJECT_SOURCE_DIR})
   include_directories(${Boost_INCLUDE_DIRS})
+
+  add_library(utility
+    utility.cxx
+    )    
   add_executable(dijk
     dijk.cxx
-    utility.cxx
+
     )
 
   add_executable(test_hessian_filter
@@ -76,42 +80,42 @@ if(Boost_FOUND)
 
   add_executable(multiscale_hessian
     multiscale_hessian.cxx
-    utility.cxx
+
     )
 
   add_executable(opening_filter
     opening_filter
-    utility.cxx
+
     )
 
   add_executable(closing_filter
     closing_filter
-    utility.cxx
+
     )
 
   add_executable(dilation_filter
     dilation_filter
-    utility.cxx
+
     )
 
   add_executable(erosion_filter
     erosion_filter
-    utility.cxx
+
     )
 
   add_executable(connected_comp
     connected_comp
-    utility.cxx
+
     )
 
   add_executable(fillhole_filter
     fillhole_filter.cxx
-    utility.cxx
+
     )
 
   add_executable(voting_fillhole_filter
     voting_fillhole_filter.cxx
-    utility.cxx
+
     )
 
   add_executable(binary_fillhole
@@ -121,21 +125,74 @@ if(Boost_FOUND)
   add_executable(my_hessian_test
     my_hessian_test.cxx
     hessian_eigenvector.cxx
-    utility.cxx
+
+    )
+
+  add_executable(mha_to_nifti
+    mha_to_nifti
+
     )
   
-  target_link_libraries(dijk ${ITK_LIBRARIES} ${Boost_LIBRARIES})
-  target_link_libraries(test_hessian_filter ${ITK_LIBRARIES})
-  target_link_libraries(multiscale_hessian ${ITK_LIBRARIES} ${Boost_LIBRARIES})
-  target_link_libraries(opening_filter ${ITK_LIBRARIES} ${Boost_LIBRARIES})
-  target_link_libraries(closing_filter ${ITK_LIBRARIES} ${Boost_LIBRARIES})
-  target_link_libraries(dilation_filter ${ITK_LIBRARIES} ${Boost_LIBRARIES})
-  target_link_libraries(erosion_filter ${ITK_LIBRARIES} ${Boost_LIBRARIES})
-  target_link_libraries(connected_comp ${ITK_LIBRARIES} ${Boost_LIBRARIES})
-  target_link_libraries(fillhole_filter ${ITK_LIBRARIES} ${Boost_LIBRARIES})
-  target_link_libraries(voting_fillhole_filter ${ITK_LIBRARIES} ${Boost_LIBRARIES})
+  add_executable(gmm
+    gmm.cxx
 
-  target_link_libraries(binary_fillhole ${ITK_LIBRARIES})
-  target_link_libraries(my_hessian_test ${ITK_LIBRARIES} ${Boost_LIBRARIES})
+    )
+
+  add_executable(test_gmm
+    test_gmm.cxx
+    )    
+
+  add_executable(derivative_filter
+    derivative_filter.cxx
+    )    
+
+  add_executable(canny_filter
+    canny_filter.cxx
+    )    
+
+  add_executable(fastmarching
+    fastmarching.cxx
+    )    
+
+  # test fast marching upwind filter.
+  add_executable(test_ffm_upwind
+    test_ffm_upwind.cxx
+    )
+
+  add_executable(fmm_upwind
+    fmm_upwind.cxx
+    )
+
+  add_executable(inverse_distmap
+    inverse_distmap.cxx
+    )
+
+  add_executable(find_path
+    find_path.cxx
+    )
+
+  target_link_libraries(dijk utility ${ITK_LIBRARIES} ${Boost_LIBRARIES})
+  target_link_libraries(test_hessian_filter utility ${ITK_LIBRARIES})
+  target_link_libraries(multiscale_hessian utility ${ITK_LIBRARIES} ${Boost_LIBRARIES})
+  target_link_libraries(opening_filter utility ${ITK_LIBRARIES} ${Boost_LIBRARIES})
+  target_link_libraries(closing_filter utility ${ITK_LIBRARIES} ${Boost_LIBRARIES})
+  target_link_libraries(dilation_filter utility ${ITK_LIBRARIES} ${Boost_LIBRARIES})
+  target_link_libraries(erosion_filter utility ${ITK_LIBRARIES} ${Boost_LIBRARIES})
+  target_link_libraries(connected_comp utility ${ITK_LIBRARIES} ${Boost_LIBRARIES})
+  target_link_libraries(fillhole_filter utility ${ITK_LIBRARIES} ${Boost_LIBRARIES})
+  target_link_libraries(voting_fillhole_filter utility ${ITK_LIBRARIES} ${Boost_LIBRARIES})
+
+  target_link_libraries(binary_fillhole utility ${ITK_LIBRARIES})
+  target_link_libraries(my_hessian_test utility ${ITK_LIBRARIES} ${Boost_LIBRARIES})
+  target_link_libraries(mha_to_nifti utility ${ITK_LIBRARIES} ${Boost_LIBRARIES})
+  target_link_libraries(gmm utility ${ITK_LIBRARIES} ${Boost_LIBRARIES})
+  target_link_libraries(test_gmm utility ${ITK_LIBRARIES} ${Boost_LIBRARIES})
+  target_link_libraries(derivative_filter utility ${ITK_LIBRARIES} ${Boost_LIBRARIES})
+  target_link_libraries(canny_filter utility ${ITK_LIBRARIES} ${Boost_LIBRARIES})
+  target_link_libraries(fastmarching utility ${ITK_LIBRARIES} ${Boost_LIBRARIES})
+  target_link_libraries(test_ffm_upwind utility ${ITK_LIBRARIES} ${Boost_LIBRARIES})
+  target_link_libraries(fmm_upwind utility ${ITK_LIBRARIES} ${Boost_LIBRARIES})
+  target_link_libraries(inverse_distmap utility ${ITK_LIBRARIES} ${Boost_LIBRARIES})
+  target_link_libraries(find_path utility ${ITK_LIBRARIES} ${Boost_LIBRARIES})
 endif()
 

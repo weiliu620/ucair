@@ -1,6 +1,5 @@
 #include <common.h>
 #include <utility.h>
-
 #include "itkImageFileReader.h"
 #include "itkImageFileWriter.h"
 #include "itkHessianToObjectnessMeasureImageFilter.h"

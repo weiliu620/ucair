@@ -7,3 +7,6 @@ int save_volume(ImageType3DUC::Pointer ptr, std::string filename);
 int save_volume(ImageType3B::Pointer ptr, std::string filename);
 int save_volume(ImageType2UC::Pointer ptr, std::string filename);
 int save_volume(ImageType3D::Pointer ptr, std::string filename);
+int save_volume(ImageTypeArray3D::Pointer ptr, std::string filename);
+int save_volume(ImageType4D::Pointer ptr, std::string filename);
+int save_volume(ImageTypeArray3F::Pointer ptr, std::string filename);

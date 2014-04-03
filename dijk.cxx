@@ -13,6 +13,7 @@ int build_ijk_map(lemon::StaticDigraph & g,
 
 int build_cost_map(lemon::StaticDigraph & g,
 		   ImageType3DF::Pointer vnessPtr,
+		   ImageTypeArray3F::Pointer evPtr,
 		   lemon::StaticDigraph::NodeMap<itk::Index<3> > & ijkmap,		   
 		   lemon::StaticDigraph::ArcMap<double> & costmap);
 
@@ -25,7 +26,7 @@ int find_target_nodes(std::set<lemon::StaticDigraph::Node> & target_set,
 namespace po = boost::program_options;
 int main(int argc, char* argv[])
 {
-     std::string mask_file, vesselness_file, lungmask_file;
+     std::string mask_file, vesselness_file, lungmask_file, eigenvector_file, cost_file, accuscore_file;
      ParType par;
      // program options.
      po::options_description mydesc("Options can only used at commandline");
@@ -37,6 +38,12 @@ int main(int argc, char* argv[])
 	    "Lung mask file. Must be a binary file with same size as input vesselness image. voxels with zero intensity are outside of the region of interest.")
 	   ("vesselness,i", po::value<std::string>(&vesselness_file)->default_value("vessel.nii.gz"), 
 	    "Vesselness file. The intensity of the image indicates the vesselness of the current voxel.")
+	   ("eigen,e", po::value<std::string>(&eigenvector_file)->default_value("eigenvector.mha"), 
+	    "Hessian's eigenvector (vector) image, in mha format.")
+	   ("cost,c", po::value<std::string>(&cost_file)->default_value("cost.nii.gz"), 
+	    "Cost map returned by Dijkstra.")
+	   ("accuscore,a", po::value<std::string>(&accuscore_file)->default_value("accuscore.nii.gz"), 
+	    "Accumulated scores from voting.")
 	  ("seed,s", po::value<std::vector<int> >()->multitoken(), "Source voxel coordinates. Must be in the format of: --seed i j k. ")
 	  ("nbrs,b", po::value<unsigned short>(&par.n_nbrs)->default_value(6), 
 	   "Number of neighbors of each voxel. Must be one of 6, 18, or 26. .")
@@ -85,6 +92,12 @@ int main(int argc, char* argv[])
      vnessReader->Update();
      ImageType3DF::Pointer vnessPtr = vnessReader->GetOutput();
 
+     // read Hessian eigenvector file
+     ReaderTypeArray3F::Pointer eigenvectorReader = ReaderTypeArray3F::New();
+     eigenvectorReader->SetFileName(eigenvector_file);
+     eigenvectorReader->Update();
+     ImageTypeArray3F::Pointer eigenvectorPtr = eigenvectorReader->GetOutput();
+
      // define a volume to convert (i,j,k) to node id. 
      ImageType3DU::Pointer nodemapPtr = ImageType3DU::New();
      nodemapPtr->SetRegions(maskPtr->GetLargestPossibleRegion());
@@ -107,7 +120,7 @@ int main(int argc, char* argv[])
      CostMap costmap(g, 0);
 
      // build cost map based on the vesselness volume.
-     build_cost_map(g, vnessPtr, ijkmap, costmap);
+     build_cost_map(g, vnessPtr, eigenvectorPtr, ijkmap, costmap);
 
      // find the shortest path by Dijkstra.
      lemon::Dijkstra<lemon::StaticDigraph, CostMap> dijkstra(g, costmap);
@@ -119,11 +132,26 @@ int main(int argc, char* argv[])
      dijkstra.addSource(s);
      dijkstra.start();
 
+     // define a volume to save the accumulative cost.
+     ImageType3DF::Pointer costPtr = ImageType3DF::New();
+     costPtr->SetRegions(maskPtr->GetLargestPossibleRegion());
+     costPtr->Allocate();
+     costPtr->FillBuffer(0);
+     costPtr->SetOrigin( maskPtr->GetOrigin() );
+     costPtr->SetSpacing(maskPtr->GetSpacing() );
+     costPtr->SetDirection(maskPtr->GetDirection() );
 
-     // find all the target nodes.
-     std::set<lemon::StaticDigraph::Node> target_set;
-     find_target_nodes(target_set, g, lungmaskPtr, nodemapPtr, par);
-     std::cout << "Total number of target nodes: " << target_set.size() << std::endl;
+     // update accumulative cost volume from distmap.
+     for (lemon::StaticDigraph::NodeIt nodeIt(g); nodeIt !=lemon::INVALID; ++ nodeIt) {
+     	  costPtr->SetPixel(ijkmap[nodeIt], distmap[nodeIt]);
+     }
+
+     save_volume(costPtr, cost_file);
+
+     // // find all the target nodes.
+     // std::set<lemon::StaticDigraph::Node> target_set;
+     // find_target_nodes(target_set, g, lungmaskPtr, nodemapPtr, par);
+     // std::cout << "Total number of target nodes: " << target_set.size() << std::endl;
 
      // debug. save all target node to volume. 
      // define a volume for the accumulated path score.
@@ -143,54 +171,38 @@ int main(int argc, char* argv[])
      
      // lemon::StaticDigraph::Node t = g.node(node_id);
 
-     // define a map to save accumulated path score. 
-     lemon::StaticDigraph::NodeMap<double> scoremap(g, 0);
-     lemon::Path<lemon::StaticDigraph> this_path;
+     // // define a map to save accumulated path score. 
+     // lemon::StaticDigraph::NodeMap<double> scoremap(g, 0);
+     // lemon::Path<lemon::StaticDigraph> this_path;
 
-     unsigned path_id = 0;
-     std::set<lemon::StaticDigraph::Node>::iterator target_it;
-     for (target_it = target_set.begin(); target_it != target_set.end() ; ++ target_it) {
-     	  this_path = dijkstra.path(*target_it);
-     	  for (lemon::Path<lemon::StaticDigraph>::ArcIt it(this_path); it != lemon::INVALID; ++ it) {
+     // unsigned path_id = 0;
+     // std::set<lemon::StaticDigraph::Node>::iterator target_it;
+     // for (target_it = target_set.begin(); target_it != target_set.end() ; ++ target_it) {
+     // 	  this_path = dijkstra.path(*target_it);
+     // 	  for (lemon::Path<lemon::StaticDigraph>::ArcIt it(this_path); it != lemon::INVALID; ++ it) {
 	  
-     	       scoremap[g.source(it)] ++;
-     	  }
-	  if (path_id % 100 == 0)
-	       printf("%i ", path_id);
-	  path_id ++;
-     }
+     // 	       scoremap[g.source(it)] ++;
+     // 	  }
+     // 	  if (path_id % 100 == 0)
+     // 	       printf("%i ", path_id);
+     // 	  path_id ++;
+     // }
 
+     // // define a volume for the accumulated path score.
+     // ImageType3DU::Pointer scorePtr = ImageType3DU::New();
+     // scorePtr->SetRegions(maskPtr->GetLargestPossibleRegion());
+     // scorePtr->Allocate();
+     // scorePtr->FillBuffer(0);
+     // scorePtr->SetOrigin( maskPtr->GetOrigin() );
+     // scorePtr->SetSpacing(maskPtr->GetSpacing() );
+     // scorePtr->SetDirection(maskPtr->GetDirection() );
 
-     // define a volume for the accumulated path score.
-     ImageType3DU::Pointer scorePtr = ImageType3DU::New();
-     scorePtr->SetRegions(maskPtr->GetLargestPossibleRegion());
-     scorePtr->Allocate();
-     scorePtr->FillBuffer(0);
-     scorePtr->SetOrigin( maskPtr->GetOrigin() );
-     scorePtr->SetSpacing(maskPtr->GetSpacing() );
-     scorePtr->SetDirection(maskPtr->GetDirection() );
+     // // save to volume.
+     // for (lemon::StaticDigraph::NodeIt nodeIt(g); nodeIt !=lemon::INVALID; ++ nodeIt) {
+     // 	  scorePtr->SetPixel(ijkmap[nodeIt], scoremap[nodeIt]);
+     // }
+     // save_volume(scorePtr, accuscore_file);
 
-     // save to volume.
-     for (lemon::StaticDigraph::NodeIt nodeIt(g); nodeIt !=lemon::INVALID; ++ nodeIt) {
-	  scorePtr->SetPixel(ijkmap[nodeIt], scoremap[nodeIt]);
-     }
-     save_volume(scorePtr, "score.nii.gz");
-
-     // define a volume to save the accumulative cost.
-     ImageType3DF::Pointer costPtr = ImageType3DF::New();
-     costPtr->SetRegions(maskPtr->GetLargestPossibleRegion());
-     costPtr->Allocate();
-     costPtr->FillBuffer(0);
-     costPtr->SetOrigin( maskPtr->GetOrigin() );
-     costPtr->SetSpacing(maskPtr->GetSpacing() );
-     costPtr->SetDirection(maskPtr->GetDirection() );
-
-     // update accumulative cost volume from distmap.
-     for (lemon::StaticDigraph::NodeIt nodeIt(g); nodeIt !=lemon::INVALID; ++ nodeIt) {
-     	  costPtr->SetPixel(ijkmap[nodeIt], distmap[nodeIt]);
-     }
-
-     save_volume(costPtr, "cost.nii.gz");
 
 
      return 0;
@@ -239,7 +251,7 @@ int build_graph(lemon::StaticDigraph & g,
 	  }
      }
 
-     // build edges.
+     // build edges, and also the costs.
      std::vector<std::pair<int,int> > arcs;
      unsigned short offset = 0;
      unsigned cur_node_id = 0, nbr_node_id = 0;
@@ -252,9 +264,11 @@ int build_graph(lemon::StaticDigraph & g,
 			 // neighbor also in mask.
 			 nodemapIdx = maskIt.GetIndex(offset);
 			 nbr_node_id = nodemapPtr->GetPixel(nodemapIdx);
-			 // undirected graph is represented by directed garph with two arcs.
+			 // undirected graph is represented by directed garph
+			 // with two arcs. Each node has the chance of becoming
+			 // neighboring node, hence two arcs will be added
+			 // eventrually.
 			 arcs.push_back(std::make_pair(cur_node_id, nbr_node_id));			 
-			 // arcs.push_back(std::make_pair(nbr_node_id, cur_node_id));			 
 		    } // maskIt.Get
 	       } // neiIdx
 	  } // maskIt.GetCenter
@@ -286,11 +300,40 @@ int build_ijk_map(lemon::StaticDigraph & g,
 
 int build_cost_map(lemon::StaticDigraph & g,
 		   ImageType3DF::Pointer vnessPtr,
+		   ImageTypeArray3F::Pointer evPtr,
 		   lemon::StaticDigraph::NodeMap<itk::Index<3> > & ijkmap,		   
 		   lemon::StaticDigraph::ArcMap<double> & costmap)
 {
+     itk::Offset<3> offset;
+     offset.Fill(0);
+     double sum_of_square = 0;
+     double proj_weight = 0; // the weight of vesselness when projected on a
+			     // axis.
+     double proj_vness = 0;
+     double mag = 0; // offset unit vector magnitude
+     ImageTypeArray3D::IndexType idx;
+     idx.Fill(0);
+     Array3F ev;
+     ev.Fill(0);
+
+     // we use offset as a unit vector, and project Hessian's eigenvector to
+     // this unit vector.
+     
      for (lemon::StaticDigraph::ArcIt arcIt(g); arcIt != lemon::INVALID; ++ arcIt) {
-	  costmap[arcIt] = exp(-(vnessPtr->GetPixel(ijkmap[g.source(arcIt)]) + vnessPtr->GetPixel(ijkmap[g.target(arcIt)]))) + 0.5;
+	  offset = ijkmap[g.target(arcIt)] - ijkmap[g.source(arcIt)];
+	  sum_of_square = (double)(offset[0]*offset[0] + offset[1]*offset[1] + offset[2]*offset[2]);
+	  mag = sqrt(sum_of_square);
+
+	  // eigenvector is assumed to be unit already.
+	  idx = ijkmap[g.source(arcIt)];
+	  ev = evPtr->GetPixel(idx);
+	  proj_weight = (ev[0] * (double)offset[0] + ev[1] * (double)offset[1] + ev[2] * (double)offset[2]);
+	  proj_weight = fabs(proj_weight) / mag;
+	  proj_vness = vnessPtr->GetPixel(idx) * proj_weight;
+	  // costmap[arcIt] = 1 / (proj_vness + 1);
+	  costmap[arcIt] = exp(- proj_vness);
+	  // costmap[arcIt] = exp(- vnessPtr->GetPixel(ijkmap[g.source(arcIt)]) ); 
+
      }
 }
 
