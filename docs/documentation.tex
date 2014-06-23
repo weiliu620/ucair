@@ -1,0 +1,118 @@
+\documentclass[12pt]{article} 
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{amsmath}
+\usepackage{verbatim}
+\usepackage{fancyvrb}
+\usepackage{natbib}
+\usepackage{color}
+\hypersetup{
+  % bookmarks=true,         % show bookmarks bar?
+    unicode=false,          % non-Latin characters in Acrobat’s bookmarks
+    pdftoolbar=true,        % show Acrobat’s toolbar?
+    pdfmenubar=true,        % show Acrobat’s menu?
+    pdffitwindow=false,     % window fit to page when opened
+    pdfstartview={FitH},    % fits the width of the page to the window
+    pdftitle={Pulmonary Vessel Segmentation Notes},
+    pdfauthor={Wei Liu},     % author
+    pdfsubject={Reading notes},   % subject of the document
+    pdfcreator={Wei Liu},   % creator of the document
+    pdfproducer={Producer}, % producer of the document
+    pdfkeywords={Pulmonary vessel, segmentation}, % list of keywords
+    pdfnewwindow=true,      % links in new window
+    colorlinks= true,       % false: boxed links; true: colored links
+    linkcolor=blue,          % color of internal links
+    citecolor=blue,        % color of links to bibliography
+    filecolor=magenta,      % color of file links
+    urlcolor=cyan           % color of external links
+}
+
+\setlength{\oddsidemargin}{0 in}
+\setlength{\evensidemargin}{0 in}
+\setlength{\topmargin}{-0.6 in}
+\setlength{\textwidth}{6.5 in}
+\setlength{\textheight}{9 in}
+\setlength{\headsep}{0.5 in}
+\setlength{\parindent}{0 in}
+\setlength{\parskip}{0.1 in}
+
+\begin{document}
+\title{Pulmonary Vessel Segmentation Notes}
+\author{Wei Liu}
+\maketitle
+
+\section{Lung Extraction Pipeline}
+\begin{itemize}
+\item Threshold the CT image at -2000 to get a \emph{cylinder} mask. The -2000
+  value may change across patients?
+
+\begin{Verbatim}[frame=single]
+fslmaths /scratch/datasets/PE/PE000919.nii.gz -add 2000 -thr 0 -bin
+PE919/round_mask.nii.gz
+\end{Verbatim}
+
+\item First run GMM with 3 components: lung, tissue, and bones. Initial
+mean set to -800, 0, 1000, and initial standard deviation of GMM set to 100
+for all components.  In some cases, we need to run GMM with 2 components.
+\item Extract the components corresponding to th lung.
+\begin{Verbatim}[frame=single]
+sitkfuncs.extract_comp('RV01/RV01.nii.gz', 
+'RV01/gmm_seg.nii.gz', 'RV01/cc.nii.gz')
+\end{Verbatim}
+\item Use ITK-SNAP to check the label corresponding to the lung. Mostly left
+  and right lung are connected in a single component, so we need only one
+  label. In rare case, they are separated into two components, so we need 2
+  labels. 
+
+\item Extract the lung component.
+
+\begin{Verbatim}[frame=single]
+ sitkfuncs.extract_lung('RV01/cc.nii.gz', [1], 
+'RV01/lung.nii.gz', 10)
+\end{Verbatim}
+
+\item fill hole in the lung mask with the fillhole filter.
+
+\begin{Verbatim}[frame=single]
+fillhole_filter -i lung.nii.gz -o lung.nii.gz
+\end{Verbatim}
+
+\end{itemize}
+
+\section{Vessel Extraction}
+\begin{itemize}
+\item Manually define seed regions.
+
+\item Estimate the density and get a density map, which will be used as the
+  speed map of fast marching method. 
+\begin{Verbatim}[frame=single]
+est_density -i RV01.nii.gz -e seeds.nii.gz -m lung.nii.gz 
+-o density.nii.gz
+\end{Verbatim}
+  The standard deviation parameter of the density estimation routine controls
+  how much belief the user should give to the seed region. With a small
+  deviation, only the voxels with intensity close to the mean intensity of the
+  seed regions will have larger density value. With a larger standard
+  deviation, the voxel have non-zero density value even its intensity is quite
+  different from the mean intensity. Therefore, the standard deviation
+  parameter can be seen as a regularization. A larger value will make the
+  density map more flat. Vessel and non-vessel voxels density will be similar,
+  and fast marching have more chance to propagate to non-vessel regions.
+
+  \item Run the fast marching method:
+\begin{Verbatim}[frame=single]
+fmm_upwind -p density.nii.gz -e seeds.nii.gz -m lung.nii.gz -t 500 
+-o fmm_out.nii.gz
+\end{Verbatim}
+
+\item Inverse the value of the \emph{time of visit} map to get a heat map,
+  where larger values represent vessels. 
+\begin{Verbatim}[frame=single]
+inverse_distmap -i fmm_out.nii.gz -m lung.nii.gz 
+-o vessel.nii.gz -x 500
+\end{Verbatim}
+\end{itemize}
+
+\bibliographystyle{plainnat}
+\bibliography{/home/weiliu/projects/myref}
+\end{document}
