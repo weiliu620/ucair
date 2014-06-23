@@ -13,9 +13,9 @@ int main(int argc, char* argv[])
      std::string in_file, seed_file, out_file, bodymask_file;
      unsigned shortverbose = 0;
      float sigma = 0.01;
-     float alpha = 0, beta = 1;
+     // float alpha = 0, beta = 1;
      unsigned short verbose = 0;
-     float stop_time = 100;
+     float stop_time = 100, std = 120;
 
      po::options_description mydesc("Fast marching segmentation.");
      mydesc.add_options()
@@ -32,11 +32,14 @@ int main(int argc, char* argv[])
 	  ("output,o", po::value<std::string>(&out_file)->default_value("output.nii.gz"), 
 	   "Output binary volumge.")
 
-	  ("alpha,", po::value<float>(&alpha)->default_value(0), 
-	   "Alpha of sigmoid function. Small value generate steep sigmoid function.")
+	  ("std,", po::value<float>(&std)->default_value(120), 
+	   "Manual given standard deviation of the Gaussian distribtuion.")
 
-	  ("beta,", po::value<float>(&beta)->default_value(1), 
-	   "beta of sigmoid function, indicating the center of the range.")
+	  // ("alpha,", po::value<float>(&alpha)->default_value(0), 
+	  //  "Alpha of sigmoid function. Small value generate steep sigmoid function.")
+
+	  // ("beta,", po::value<float>(&beta)->default_value(1), 
+	  //  "beta of sigmoid function, indicating the center of the range.")
 
 	  ("verbose,v", po::value<unsigned short>(&verbose)->default_value(0), 
 	   "verbose level. 0 for minimal output. 3 for most output.");
@@ -108,7 +111,7 @@ DensityFunctionType;
      densityFunction->SetMean(meanAlgorithm->GetMean());
      // densityFunction->SetCovariance(covarianceAlgorithm->GetCovarianceMatrix());
      CovarianceAlgorithmType::MatrixType covariance = covarianceAlgorithm->GetCovarianceMatrix();
-     covariance[0][0] = 120*120;
+     covariance[0][0] = std * std;
      densityFunction->SetCovariance(covariance);
      
      // make a density volume.
@@ -133,23 +136,11 @@ DensityFunctionType;
 	  save_volume(densityPtr, "density.nii.gz");
      }
 
-
      typedef itk::RescaleIntensityImageFilter< ImageType3F, ImageType3F > RescaleFilterType;
      RescaleFilterType::Pointer rescaleFilter = RescaleFilterType::New();
      rescaleFilter->SetInput(densityPtr);
      rescaleFilter->SetOutputMinimum(0);
      rescaleFilter->SetOutputMaximum(1);
-
-    
-     // // normalize the density into (0, 1) with a nonlinear mapping.
-     // typedef itk::SigmoidImageFilter<ImageType3F, ImageType3F > SigmoidFilterType;
-     // SigmoidFilterType::Pointer sigmoidFilter = SigmoidFilterType::New();     
-     // sigmoidFilter->SetInput(densityPtr);
-     // sigmoidFilter->SetOutputMinimum( 0 );
-     // sigmoidFilter->SetOutputMaximum( 1 );
-     // sigmoidFilter->SetAlpha(alpha);
-     // sigmoidFilter->SetBeta(beta);
-     // sigmoidFilter->Update();
 
      save_volume(rescaleFilter->GetOutput(), out_file);
 }

@@ -146,10 +146,6 @@ if(Boost_FOUND)
     derivative_filter.cxx
     )    
 
-  add_executable(canny_filter
-    canny_filter.cxx
-    )    
-
   add_executable(fastmarching
     fastmarching.cxx
     )    
@@ -171,6 +167,18 @@ if(Boost_FOUND)
     find_path.cxx
     )
 
+  add_executable(est_density
+    est_density.cxx
+    )
+
+
+  add_executable(reg_speed
+    reg_speed.cxx
+    )
+  add_executable(extract_roi
+    extract_roi
+    )
+
   target_link_libraries(dijk utility ${ITK_LIBRARIES} ${Boost_LIBRARIES})
   target_link_libraries(test_hessian_filter utility ${ITK_LIBRARIES})
   target_link_libraries(multiscale_hessian utility ${ITK_LIBRARIES} ${Boost_LIBRARIES})
@@ -188,11 +196,13 @@ if(Boost_FOUND)
   target_link_libraries(gmm utility ${ITK_LIBRARIES} ${Boost_LIBRARIES})
   target_link_libraries(test_gmm utility ${ITK_LIBRARIES} ${Boost_LIBRARIES})
   target_link_libraries(derivative_filter utility ${ITK_LIBRARIES} ${Boost_LIBRARIES})
-  target_link_libraries(canny_filter utility ${ITK_LIBRARIES} ${Boost_LIBRARIES})
   target_link_libraries(fastmarching utility ${ITK_LIBRARIES} ${Boost_LIBRARIES})
   target_link_libraries(test_ffm_upwind utility ${ITK_LIBRARIES} ${Boost_LIBRARIES})
   target_link_libraries(fmm_upwind utility ${ITK_LIBRARIES} ${Boost_LIBRARIES})
   target_link_libraries(inverse_distmap utility ${ITK_LIBRARIES} ${Boost_LIBRARIES})
   target_link_libraries(find_path utility ${ITK_LIBRARIES} ${Boost_LIBRARIES})
+  target_link_libraries(est_density utility ${ITK_LIBRARIES} ${Boost_LIBRARIES})
+  target_link_libraries(reg_speed utility ${ITK_LIBRARIES} ${Boost_LIBRARIES})
+  target_link_libraries(extract_roi utility ${ITK_LIBRARIES} ${Boost_LIBRARIES})
 endif()
 

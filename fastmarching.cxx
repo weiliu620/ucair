@@ -1,11 +1,7 @@
 #include <common.h>
 #include <utility.h>
 #include "itkGradientMagnitudeRecursiveGaussianImageFilter.h"
-#include <itkImageToListSampleFilter.h>
 #include "itkFastMarchingImageFilter.h"
-#include "itkMeanSampleFilter.h"
-#include "itkCovarianceSampleFilter.h"
-#include "itkGaussianMembershipFunction.h"
 #include "itkSigmoidImageFilter.h"
 #include "itkFastMarchingImageToNodePairContainerAdaptor.h"
 #include "itkFastMarchingThresholdStoppingCriterion.h"
@@ -22,7 +18,7 @@ int main(int argc, char* argv[])
 
      po::options_description mydesc("Fast marching segmentation.");
      mydesc.add_options()
-	  ("help,h", "Canny filter outputs the edge map.")
+	  ("help,h", "Fast marching method.")
 	  ("int,i", po::value<std::string>(&in_file)->default_value("input.nii.gz"), 
 	   "Input intensity image.")
 
@@ -31,10 +27,6 @@ int main(int argc, char* argv[])
 
 	   ("bodymask,m", po::value<std::string>(&bodymask_file)->default_value("mask.nii.gz"), 
 	    "Body mask file.")
-
-	  // ("sigma,s", po::value<float>(&sigma)->default_value(1.5), 
-	  //  "Gaussian filter sigma.")
-
 
 	  ("sigmoidalpha,", po::value<float>(&sigmoid_alpha)->default_value(-5), 
 	   "Alpha of sigmoid function. Small value generate steep sigmoid function.")
@@ -162,73 +154,6 @@ int main(int argc, char* argv[])
      fastMarching->Update();
      save_volume(fastMarching->GetOutput(), out_file); 
 
-//      // convert voxels in the seed regions to samples.
-//      typedef itk::Statistics::ImageToListSampleFilter<ImageType3F, ImageType3UC> SampleFilterType;
-//      SampleFilterType::Pointer sample_filter = SampleFilterType::New();
-//      sample_filter->SetInput(inPtr);
-//      sample_filter->SetMaskImage(seedPtr);
-//      sample_filter->SetMaskValue(1);
-//      typedef SampleFilterType::ListSampleType SampleType;
-//      typedef SampleFilterType::MeasurementVectorType  MeasurementVectorType;
-
-//      typedef itk::Statistics::MeanSampleFilter< SampleType > MeanAlgorithmType;
-//      MeanAlgorithmType::Pointer meanAlgorithm = MeanAlgorithmType::New();
-//      meanAlgorithm->SetInput( sample_filter->GetOutput() );
-//      meanAlgorithm->Update();
-
-//      typedef itk::Statistics::CovarianceSampleFilter< SampleType > CovarianceAlgorithmType;
-//      CovarianceAlgorithmType::Pointer covarianceAlgorithm =
-// 	  CovarianceAlgorithmType::New();
-//      covarianceAlgorithm->SetInput( sample_filter->GetOutput() );
-//      covarianceAlgorithm->Update();
-
-//      if (verbose >=1 ) {
-//      printf("Seed region mean: %.2f, variance: %.2f.\n", meanAlgorithm->GetMean()[0], covarianceAlgorithm->GetCovarianceMatrix()[0][0]);
-//      }
-
-//      // compute the density map, i.e. P(x), where x is pixel value, and P is
-//      // Gaussian pdf.
-//      typedef itk::Statistics::GaussianMembershipFunction< MeasurementVectorType >
-// DensityFunctionType;
-//      DensityFunctionType::Pointer densityFunction = DensityFunctionType::New();
-//      densityFunction->SetMean(meanAlgorithm->GetMean());
-//      // densityFunction->SetCovariance(covarianceAlgorithm->GetCovarianceMatrix());
-//      CovarianceAlgorithmType::MatrixType covariance = covarianceAlgorithm->GetCovarianceMatrix();
-//      covariance[0][0] = 120*120;
-//      densityFunction->SetCovariance(covariance);
-     
-//      // make a density volume.
-//      ImageType3F::Pointer densityPtr = ImageType3F::New();
-//      densityPtr->SetRegions(inPtr->GetLargestPossibleRegion());
-//      densityPtr->Allocate();
-//      densityPtr->FillBuffer( 0 );
-//      densityPtr->SetOrigin(inPtr->GetOrigin());
-//      densityPtr->SetSpacing(inPtr->GetSpacing());
-//      densityPtr->SetDirection(inPtr->GetDirection());
-//      IteratorType3F densityIt(densityPtr, densityPtr->GetLargestPossibleRegion());
-     
-//      IteratorType3F inIt(inPtr, inPtr->GetLargestPossibleRegion());
-//      IteratorType3UC maskIt(maskPtr, maskPtr->GetLargestPossibleRegion());
-//      for (inIt.GoToBegin(), maskIt.GoToBegin(), densityIt.GoToBegin(); !maskIt.IsAtEnd(); ++ maskIt, ++ inIt, ++ densityIt) {
-// 	  if (maskIt.Get() > 0) {
-// 	       densityIt.Set(densityFunction->Evaluate(inIt.Get()));
-// 	  }
-//      }	       
-
-//      if (verbose >= 1) {
-// 	  save_volume(densityPtr, "density.nii.gz");
-//      }
-    
-     // // normalize the density into (0, 1) with a nonlinear mapping.
-     // sigmoidFilter->SetInput(densityPtr);
-     // sigmoidFilter->SetOutputMinimum( 0 );
-     // sigmoidFilter->SetOutputMaximum( 1 );
-     // sigmoidFilter->SetAlpha(density_alpha);
-     // sigmoidFilter->SetBeta(density_beta);
-     // sigmoidFilter->Update();
-     // if (verbose >= 0) {
-     // 	  save_volume(sigmoidFilter->GetOutput(), "density_nor.nii.gz");
-     // }
 
      // weight the speed map by the probability map, to make sure the non-vessel
      // region really have low speed.

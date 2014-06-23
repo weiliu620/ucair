@@ -95,10 +95,6 @@ int main( int argc, char* argv[] )
 
   multiScaleEnhancementFilter->SetGenerateScalesOutput(true);
   multiScaleEnhancementFilter->SetGenerateHessianOutput(true);
-  // std::cout << "generate scale outputs status: " << multiScaleEnhancementFilter->GetGenerateScalesOutput() << std::endl;
-  // std::cout << "generate Hessian outputs status: " << multiScaleEnhancementFilter->GetGenerateHessianOutput() << std::endl;
-
-  // std::cout << multiScaleEnhancementFilter << std::endl;
   
   typedef itk::RescaleIntensityImageFilter< ImageType, ImageType3DUC >  RescaleFilterType;
   RescaleFilterType::Pointer rescaleFilter = RescaleFilterType::New();

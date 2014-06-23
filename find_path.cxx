@@ -18,7 +18,7 @@ int main(int argc, char* argv[])
 
      po::options_description mydesc("Options can only used at commandline");
      mydesc.add_options()
-	  ("help,h", "Fast Marching method with upwind gradient output.")
+	  ("help,h", "Vote on the minimal path")
 
 	  ("seed,e", po::value<std::string>(&seed_file)->default_value("seed.nii.gz"), 
 	   "A mask file for the seed region.")
@@ -41,7 +41,7 @@ int main(int argc, char* argv[])
 
      try {
 	  if ( (vm.count("help")) | (argc == 1) ) {
-	       std::cout << "Usage: closing_filter [options]\n";
+	       std::cout << "Usage: find_path [options]\n";
 	       std::cout << mydesc << "\n";
 	       return 0;
 	  }
@@ -102,85 +102,71 @@ int main(int argc, char* argv[])
      // care how many label objects (the surface voxels may consist multiple
      // objects, deteced by the filter). We just count all pixels in all objects
      // as boundary.
-     FloatGradientImage::PixelType grad, offset;     
+     FloatGradientImage::PixelType grad;
      ImageType3UC::IndexType curIdx, newIdx;
      float delta = 0.01;
 
-     itk::Point<double, 3> cur_pos;
+     std::vector<itk::Offset<3> > neighbor_offsets(6);
+     neighbor_offsets[0].Fill(0);
+     neighbor_offsets[0][0] = -1; // {-1, 0, 0}
+
+     neighbor_offsets[1].Fill(0);
+     neighbor_offsets[1][0] = 1; // {1, 0, 0}
+
+     neighbor_offsets[2].Fill(0);
+     neighbor_offsets[2][1] = -1; // {0, -1, 0}
+
+     neighbor_offsets[3].Fill(0);
+     neighbor_offsets[3][1] = 1; // {0, 1, 0}
+
+     neighbor_offsets[4].Fill(0);
+     neighbor_offsets[4][2] = -1; // {0, 0, -1}
+
+     neighbor_offsets[5].Fill(0);
+     neighbor_offsets[5][2] = 1; // {0, 0, 1}
+     
+     unsigned best_offset_id = 0;
+     double best_cos_value = 1, cur_cos_value = 0; // cosine angle btw gradient and offset vector.x
      for(unsigned int i = 0; i < binaryImageToLabelMapFilter->GetOutput()->GetNumberOfLabelObjects(); i++) {
      	  BinaryImageToLabelMapFilterType::OutputImageType::LabelObjectType* labelObject = binaryImageToLabelMapFilter->GetOutput()->GetNthLabelObject(i);
      	  for(unsigned int n = 0; n < labelObject->Size(); n ++) {
      	       // working on this end point.
      	       curIdx =  labelObject->GetIndex(n);
-	       cur_pos[0] = curIdx[0];
-	       cur_pos[1] = curIdx[1];
-	       cur_pos[2] = curIdx[2];
      	       if (verbose >= 2) {
      		    std::cout << "working on: " << curIdx << std::endl;
      	       }
 
-	       grad = gradPtr->GetPixel(curIdx);	       
-
-	       if (grad.GetNorm() == 0 && verbose >= 2) {
-		    std::cout << curIdx << " norm is zero.\n";
-	       }
 	       // some end points are not reached by the FMM front end,
 	       // hence has zero gradient. Ignore them.
+	       grad = gradPtr->GetPixel(curIdx);	       
      	       while(seedPtr->GetPixel(curIdx) == 0 && grad.GetNorm() > 0) {
-		    // move along opporsite gradient direction until reaching a
-		    // new voxel.
-		    offset = grad * delta;
-		    do {
-			 // debug
-			 if (verbose >= 3) {
-			      std::cout << "curPos: " << cur_pos 
-					<< "  offset: " << offset 
-					<< "   curIdx: " << curIdx << std::endl;
-			 }
-			 // moving along the opposite gradient direction with step size delta.
-			 cur_pos[0] -= offset[0];
-			 cur_pos[1] -= offset[1];
-			 cur_pos[2] -= offset[2];
+		    grad = grad / grad.GetNorm(); // normalize to unit vector.
 
-			 newIdx[0] = itk::Math::Round<int,float>(cur_pos[0]);
-			 newIdx[1] = itk::Math::Round<int,float>(cur_pos[1]);
-			 newIdx[2] = itk::Math::Round<int,float>(cur_pos[2]);
-		    }
-		    while(newIdx == curIdx);
-		    curIdx = newIdx;
+		    // compute the offsets that match the gradient best.
+		    best_offset_id = 0;
+		    best_cos_value = 1; // a worse value so anyone can beat it.
+		    for (unsigned s = 0; s < neighbor_offsets.size(); s ++) {
+			 cur_cos_value = grad[0] * neighbor_offsets[s][0]
+			      + grad[1] * neighbor_offsets[s][1]
+			      + grad[2] * neighbor_offsets[s][2];
+			 if (cur_cos_value < best_cos_value) {
+			      best_cos_value = cur_cos_value;
+			      best_offset_id = s;
+			 }
+		    } // for
+
+		    // move to the new voxel.
+		    curIdx = curIdx + neighbor_offsets[best_offset_id];
 		    votemapPtr->SetPixel(curIdx, votemapPtr->GetPixel(curIdx) + 1);
 		    grad = gradPtr->GetPixel(curIdx);
-     	       } // while
+	       }
+
+	       if (grad.GetNorm() == 0 && verbose >= 3) {
+		    std::cout << curIdx << "norm is zero.\n";
+	       }
+
      	  } // n
      } // object i.
 
-
-     // debug
-     // itk::Vector<double, 3> curPos;
-     // curPos[0] = 151;
-     // curPos[1] = 186;
-     // curPos[2] = 174;
-
-     // curIdx[0] = itk::Math::Round<int, float>(curPos[0]);
-     // curIdx[1] = itk::Math::Round<int, float>(curPos[1]);
-     // curIdx[2] = itk::Math::Round<int, float>(curPos[2]);
-
-     // grad = gradPtr->GetPixel(curIdx);
-     // while(grad.GetNorm() > 0 && seedPtr->GetPixel(curIdx) == 0) {
-     // 	  offset = grad * delta;
-     // 	  curPos[0] -= offset[0];
-     // 	  curPos[1] -= offset[1];
-     // 	  curPos[2] -= offset[2];
-
-     // 	  curIdx[0] = itk::Math::Round<int,float>(curPos[0]);
-     // 	  curIdx[1] = itk::Math::Round<int,float>(curPos[1]);
-     // 	  curIdx[2] = itk::Math::Round<int,float>(curPos[2]);
-
-     // 	  std::cout << "curPos: " << curPos << "  offset: " << offset << "   curIdx: " << curIdx << std::endl;
-     // 	  votemapPtr->SetPixel(curIdx, votemapPtr->GetPixel(curIdx) + 1);
-
-     // 	  grad = gradPtr->GetPixel(curIdx);
-     // }
-	  
      save_volume(votemapPtr, "votemap.nii.gz");
 }

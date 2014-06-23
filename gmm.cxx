@@ -6,11 +6,8 @@
 #include "itkGaussianMixtureModelComponent.h"
 #include "itkExpectationMaximizationMixtureModelEstimator.h"
 #include <itkImageToListSampleFilter.h>
-
 #include "itkSampleClassifierFilter.h"
 #include "itkMaximumDecisionRule.h"
-// #include "itkCovariantVector.h"
-// #include "itkImageRegionIterator.h"
 
 namespace po = boost::program_options;
 
@@ -75,7 +72,6 @@ int main( int argc, char* argv[] )
 	  return 1;
      }    
 
-
      std::vector<double> mean_opt, sigma_opt, prop_opt;
      if (!vm["mean"].empty() && (mean_opt = vm["mean"].as<std::vector<double> >()).size() == n_comp) {
      }
@@ -119,7 +115,6 @@ int main( int argc, char* argv[] )
      to_samplePtr->FillBuffer(0);
      itk::ImageRegionIterator<ImageType3U> to_sampleIt(to_samplePtr, to_samplePtr->GetLargestPossibleRegion());
      
-
      SampleType::Pointer sample = SampleType::New();
 
      itk::ImageRegionIterator<ImageType3UC> maskIt(maskPtr, maskPtr->GetLargestPossibleRegion());
@@ -135,19 +130,8 @@ int main( int argc, char* argv[] )
      	       n ++;
      	  }
      }
-     // this_sample[0] = 2000;
-     // sample->PushBack(this_sample);
 
-     // this_sample[0] = 1000;
-     // sample->PushBack(this_sample);
-
-     // this_sample[0] = 800;
-     // sample->PushBack(this_sample);
-
-     // this_sample[0] = 580;
-     // sample->PushBack(this_sample);
-
-     std::cout << "gmm(), total number of samples inside mask: " << sample->Size() << std::endl;
+     printf("gmm(), total number of samples inside mask: %i\n", sample->Size());
 
      // init mean and sigma
      typedef itk::Array< double > ParametersType;
@@ -168,7 +152,6 @@ int main( int argc, char* argv[] )
     }
      
      EstimatorType::Pointer estimator = EstimatorType::New();
-
      estimator->SetSample( sample );
      estimator->SetMaximumIteration( maxit );
 
@@ -185,7 +168,6 @@ int main( int argc, char* argv[] )
      }
 
      estimator->Update();
-     // std::cout.precision(4);
      for ( unsigned int i = 0; i < n_comp; i++ )
      {
 	  std::cout << "Cluster[" << i << "]" << std::endl;
@@ -213,16 +195,8 @@ int main( int argc, char* argv[] )
      sampleClassifierFilter->SetMembershipFunctions( estimator->GetOutput() );
      sampleClassifierFilter->Update();
 
- 
      const FilterType::MembershipSampleType* membershipSample = sampleClassifierFilter->GetOutput();
      FilterType::MembershipSampleType::ConstIterator iter = membershipSample->Begin();
-
-     // while ( iter != membershipSample->End() )
-     // {
-     // 	  std::cout << (int)iter.GetMeasurementVector()[0]  << " : " << iter.GetClassLabel() << std::endl;
-     // 	  ++iter;
-     // }
-
 
      // save label to volume
      // first define a image buffer to save labels.
@@ -230,16 +204,15 @@ int main( int argc, char* argv[] )
      labelPtr->SetRegions(inPtr->GetLargestPossibleRegion());
      labelPtr->Allocate();
      labelPtr->FillBuffer(0);
+     labelPtr->SetOrigin(inPtr->GetOrigin());
+     labelPtr->SetDirection(inPtr->GetDirection());
+     labelPtr->SetSpacing(inPtr->GetSpacing());
      itk::ImageRegionIterator<ImageType3U> labelIt(labelPtr, labelPtr->GetLargestPossibleRegion());
-
 
      ImageType3UC::IndexType maskIdx;
      for(maskIt.GoToBegin(), to_sampleIt.GoToBegin(), labelIt.GoToBegin(); !maskIt.IsAtEnd(); ++ maskIt, ++ to_sampleIt, ++ labelIt) {
      	  if (maskIt.Get() > 0) {
      	       maskIdx = maskIt.GetIndex();
-     	       if (maskIdx[0] == 256 && maskIdx[1] == 224 && maskIdx[2] == 248) {
-     		    printf("right here.\n");
-     	       }
      	       labelIt.Set(membershipSample->GetClassLabel(to_sampleIt.Get()));
      	  }
      }
@@ -247,8 +220,3 @@ int main( int argc, char* argv[] )
      save_volume(labelPtr, seg_file);
 }
 
-// int print_gmm(std::vector< ComponentType::Pointer > & components,
-// 	      EstimatorType::Pointer estimator)
-// {
-
-// }

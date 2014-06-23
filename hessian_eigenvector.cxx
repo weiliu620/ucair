@@ -81,14 +81,6 @@ int hessian_eigenvector(HessianImageType::Pointer hessianPtr,
      	  // initialize the objectness measure
      	  double objectnessMeasure = 1.0;
 
-
-	  // debug.
-	  hessianIdx = it.GetIndex();
-	  if ( (hessianIdx[0] == 230 && hessianIdx[1] == 239 && hessianIdx[2] == 134) || (hessianIdx[0] == 165 && hessianIdx[1] == 318 && hessianIdx[2] == 146)) {
-	       std::cout << "here it is.\n";
-	  }
-
-
      	  // compute objectness from eigenvalue ratios and second-order structureness
      	  if ( m_ObjectDimension < ImageDimension - 1 )
      	  {
