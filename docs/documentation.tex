@@ -1,4 +1,4 @@
-\documentclass[12pt]{article} 
+\documentclass[11pt]{article} 
 \usepackage{graphicx}
 \usepackage{hyperref}
 \usepackage{amsmath}
@@ -55,27 +55,28 @@ PE919/round_mask.nii.gz
 mean set to -800, 0, 1000, and initial standard deviation of GMM set to 100
 for all components.  In some cases, we need to run GMM with 2 components.
 \begin{Verbatim}[frame=single]
-  gmm --input RV01.nii.gz --seg seg.nii.gz --mask round_mask.nii.gz --ncomp 3
-  --mean -800 0 100 --sigma 100 100 100 --prop 0.33 0.33 0.33 --maxit 30
+gmm --input RV01.nii.gz --seg seg.nii.gz --mask round_mask.nii.gz --ncomp 3
+--mean -800 0 100 --sigma 100 100 100 --prop 0.33 0.33 0.33 --maxit 30
 \end{Verbatim}
-\item Extract the components corresponding to th lung.
+\item Convert the GMM label map into a component map, so the non-connected
+  regions with same GMM labels are assigned different component labels.
 \begin{Verbatim}[frame=single]
-sitkfuncs.extract_comp('RV01/RV01.nii.gz', 
-'RV01/gmm_seg.nii.gz', 'RV01/cc.nii.gz')
+sitkfuncs.extract_comp('RV01/gmm_seg.nii.gz', 'RV01/cc.nii.gz')
 \end{Verbatim}
-\item Use ITK-SNAP to check the label corresponding to the lung. Mostly left
-  and right lung are connected in a single component, so we need only one
-  label. In rare case, they are separated into two components, so we need 2
-  labels. 
+\item Use ITK-SNAP to check the label corresponding to the left and right
+  lung. If left and right lungs are connected, identify only one
+  label. Otherwise, identify both labels. 
 
-\item Extract the lung component.
+\item Extract the lung component and output a binary volume.
 
 \begin{Verbatim}[frame=single]
- sitkfuncs.extract_lung('RV01/cc.nii.gz', [1], 
-'RV01/lung.nii.gz', 10)
+sitkfuncs.extract_lung('RV01/cc.nii.gz', [1], 'RV01/lung.nii.gz', 10)
 \end{Verbatim}
 
-\item fill hole in the lung mask with the fillhole filter.
+\item Optionally, fill hole in the lung mask with the fillhole filter. ITK
+  fillhole filter has a bug, that it only fill holes in a axial slides. That
+  is, the filter applies only on 2D slide, instead of on 3D volume. The below
+  command call ITK filter, so it does the same thing. 
 
 \begin{Verbatim}[frame=single]
 fillhole_filter -i lung.nii.gz -o lung.nii.gz
