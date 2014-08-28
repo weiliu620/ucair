@@ -4,7 +4,7 @@ ucair
 This repository includes some c++ and python code for the lung and vessel
 extraction. 
 
-Requirement to build the c++ code: 
+Requirement to build the c++ code under Linux: 
 
 (1) Latest Boost library (http://www.boost.org/). Most libraries in Boost are
 header only, and do not need to build. Unfortunately, this project need the

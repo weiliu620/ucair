@@ -54,6 +54,10 @@ PE919/round_mask.nii.gz
 \item First run GMM with 3 components: lung, tissue, and bones. Initial
 mean set to -800, 0, 1000, and initial standard deviation of GMM set to 100
 for all components.  In some cases, we need to run GMM with 2 components.
+\begin{Verbatim}[frame=single]
+  gmm --input RV01.nii.gz --seg seg.nii.gz --mask round_mask.nii.gz --ncomp 3
+  --mean -800 0 100 --sigma 100 100 100 --prop 0.33 0.33 0.33 --maxit 30
+\end{Verbatim}
 \item Extract the components corresponding to th lung.
 \begin{Verbatim}[frame=single]
 sitkfuncs.extract_comp('RV01/RV01.nii.gz', 
