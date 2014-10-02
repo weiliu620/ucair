@@ -188,7 +188,7 @@ if(Boost_FOUND)
 
   # add_executable(kmeans
   #   kmeans.cxx
-    )
+    # )
 
   target_link_libraries(dijk utility ${ITK_LIBRARIES} ${Boost_LIBRARIES})
   target_link_libraries(test_hessian_filter utility ${ITK_LIBRARIES})
