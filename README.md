@@ -17,6 +17,8 @@ do need to be build by following BOOST document.
 
 export BOOST_ROOT=YOUR_BOOST_BUILD_DIR
 
+The YOUR_BOOST_BUILD_DIR should contain a 'lib' and an 'include' dir. 
+
 (4) For out-of-source build of this project, create a build dir. In the build
 dir, run 
 
