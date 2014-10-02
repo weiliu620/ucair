@@ -113,11 +113,12 @@ fmm_upwind -p density.nii.gz -e seeds.nii.gz -m lung.nii.gz -t 500
 The seed region can be manually defined as a binary mask file, where intensity
 value 1 means seed region. Or, it can be the manual segmentation of arteries
 that has been obtained before. Sometimes, when we are only interested in
-arteries and only give seeds within arteries, the routine will lead into the
+arteries and only give seeds within arteries, the routine will leak into the
 vein region and end up finding vein. 
 
 \item Inverse the value of the \emph{time of visit} map to get a heat map,
-  where larger values represent vessels. 
+  where larger values represent vessels. The largest time steps should be same
+  with the previous \textsf{fmm\_upwind} command. 
 \begin{Verbatim}[frame=single]
 inverse_distmap -i fmm_out.nii.gz -m lung.nii.gz 
 -o vessel.nii.gz -x 500
