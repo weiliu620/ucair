@@ -110,6 +110,11 @@ non-vessel regions.
 fmm_upwind -p density.nii.gz -e seeds.nii.gz -m lung.nii.gz -t 500 
 -o fmm_out.nii.gz
 \end{Verbatim}
+The seed region can be manually defined as a binary mask file, where intensity
+value 1 means seed region. Or, it can be the manual segmentation of arteries
+that has been obtained before. Sometimes, when we are only interested in
+arteries and only give seeds within arteries, the routine will lead into the
+vein region and end up finding vein. 
 
 \item Inverse the value of the \emph{time of visit} map to get a heat map,
   where larger values represent vessels. 
