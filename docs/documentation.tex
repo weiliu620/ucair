@@ -94,15 +94,16 @@ fillhole_filter -i lung.nii.gz -o lung.nii.gz
 est_density -i RV01.nii.gz -e seeds.nii.gz -m lung.nii.gz 
 -o density.nii.gz
 \end{Verbatim}
-  The standard deviation parameter of the density estimation routine controls
-  how much belief the user should give to the seed region. With a small
-  deviation, only the voxels with intensity close to the mean intensity of the
-  seed regions will have larger density value. With a larger standard
-  deviation, the voxel have non-zero density value even its intensity is quite
-  different from the mean intensity. Therefore, the standard deviation
-  parameter can be seen as a regularization. A larger value will make the
-  density map more flat. Vessel and non-vessel voxels density will be similar,
-  and fast marching have more chance to propagate to non-vessel regions.
+The standard deviation parameter of the density estimation routine controls
+how much belief the user should give to the seed region. With a small
+deviation, only the voxels with intensity close to the mean intensity of the
+seed regions will have larger density value. With a larger standard deviation,
+the voxel have non-zero density value even its intensity is quite different
+from the mean intensity. Therefore, the standard deviation parameter can be
+seen as a regularization. A larger value will make the histogram of the
+density map more flat, and make Vessel and non-vessel voxels density more
+similar. accordingly, fast marching have more chance to propagate to
+non-vessel regions.
 
   \item Run the fast marching method:
 \begin{Verbatim}[frame=single]

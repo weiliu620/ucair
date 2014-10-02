@@ -1,0 +1,149 @@
+\documentclass[12pt]{article} 
+%\usepackage{bookman}
+\usepackage{/home/weiliu/projects/haldefs}
+\usepackage{graphicx}
+\usepackage{url}
+\usepackage{textcomp}
+\usepackage{enumitem}
+\usepackage{subfig}
+\usepackage{hyperref}
+%\usepackage{/home/sci/weiliu/packages/breakurl/breakurl}
+\usepackage{amsmath}
+\usepackage{verbatim}
+\usepackage{fancyvrb}
+\usepackage{natbib}
+\usepackage{algorithmic}
+\usepackage{algorithm}
+\usepackage{color}
+\usepackage{mdwlist}
+
+\hypersetup{
+  % bookmarks=true,         % show bookmarks bar?
+    unicode=false,          % non-Latin characters in Acrobat’s bookmarks
+    pdftoolbar=true,        % show Acrobat’s toolbar?
+    pdfmenubar=true,        % show Acrobat’s menu?
+    pdffitwindow=false,     % window fit to page when opened
+    pdfstartview={FitH},    % fits the width of the page to the window
+    pdftitle={Pulmonary Vessel Segmentation Notes},
+    pdfauthor={Wei Liu},     % author
+    pdfsubject={Reading notes},   % subject of the document
+    pdfcreator={Wei Liu},   % creator of the document
+    pdfproducer={Producer}, % producer of the document
+    pdfkeywords={Pulmonary vessel, segmentation}, % list of keywords
+    pdfnewwindow=true,      % links in new window
+    colorlinks= true,       % false: boxed links; true: colored links
+    linkcolor=blue,          % color of internal links
+    citecolor=blue,        % color of links to bibliography
+    filecolor=magenta,      % color of file links
+    urlcolor=cyan           % color of external links
+}
+
+
+\setlength{\oddsidemargin}{0 in}
+\setlength{\evensidemargin}{0 in}
+\setlength{\topmargin}{-0.6 in}
+\setlength{\textwidth}{6.5 in}
+\setlength{\textheight}{9 in}
+\setlength{\headsep}{0.5 in}
+\setlength{\parindent}{0 in}
+\setlength{\parskip}{0.1 in}
+
+
+
+\begin{document}
+\title{Learning the Deep Structure from Large Cohort of Volume CT images}
+\author{Wei Liu}
+
+\maketitle
+
+The analysis of CT volume images of multiple subjects is an challenging
+problem for a few reasons. First, the difference between the images of healthy
+people and patients is more subtle, compared to the difference among natural
+scene images. Modern computer vision algorithms can seldom achieve the
+performance of human vision system. For medical images such as CT volume, even
+human vision need professional training to identify the interested structures,
+and the difference between patients and control group. It will be a even more
+difficult problem for computer vision algorithms. Second, a good registration
+method is a must for making an anatomical atlas, or brining the information
+from labeled training data into the image space of a new incoming
+subjects. However, the anatomical variation of CT chest images among subjects
+are much larger than that of brain images, and the standard image registration
+routines that works for brain image often fail to deal with such large
+variation. 
+
+To use computer algorithm for helping the diagnosis of lung or heart disease
+such as pulmonary hypertension (PH), chronic obstructive pulmonary disease
+(COPD), certain features should be extracted from the raw CT volume
+images. The features are used for a classification task of differentiating
+patients from groups, or used in a regression task together with other
+phenotype or genotype variables. 
+
+\section{Deep Learning in Medical Imaging Analysis}
+The class of Deep Learning methods are indeed developed based on the
+multi-layer neural networks, and is experiencing a revival after some
+engineering methods are proposed to learn the models quickly with more
+data. Some models in this class has a probabilistic interpretation, such as
+restricted Boltzmann machine, while other models, such as auto-encoder do
+not. In the recent development of deep learning network, more layers are used
+to learn the underlying patterns, and engineering tricks such as pre-training,
+or layer-by-layer learning help the network quickly learn the information from
+unlabeled data. 
+
+Deep learning methods can potentially solve the problems that are faced in the
+medical image problems. To match the objects (organs, vessels) from the images
+of group of subjects, a set of landmark points are defined on each volume
+image manually by people with clinical radiological or anatomical training,
+which is a time-consuming task. alignment can also be achieve by
+intensity-based registration, although no registration routine can achieve
+good results as in natural images. By using deep learning network, a set of
+features can be learned from the networks. The features are in a hierarchical
+organization, similar to the way human vision system recognize objects. Those
+features can be used in the following regression or classification task, or
+the deep learning network can be used for regression or classification, once
+the features are successfully learned. 
+\section{Plan}
+Deep learning methods has a steep learning curve. Since the class of
+algorithms do not have much support from computation theory about the
+performance guarantee, we should start by using convenient tools and learn
+from experiments. \textsf{Theano} is a python package that is designed from
+machine learning, especially for deep learning networks. It supports
+functional programming, and can automatically computer derivatives and other
+functions. \textsf{Theano} and \textsf{Pylearn2} also have modules such as
+logistic function, built in the packages. These modules makes it easy for user
+to quickly build a neural network with structures they want. 
+
+Since most of the application of deep learning on vision is focused on natural
+2D natural images, once the prototype of the learning algorithms is available,
+we should start from experimenting on 2D natural images, such as the standard
+digits dataset \textsf{mnist}. Then, we can crop one single slide from the
+same location of the volume images of each subjects, and use the 2D slides as
+samples, just as natural images. The number of samples (subjects) is small (a
+few hundred) compared to millions of natural images database
+(\textsf{ImageNet}), but will serve as a initial dataset for experiments. 
+
+Theano supports GPU computing, as well as parallel processes on
+multi-cores. The underling BLAS library also supports multi-cores. With a few
+hundreds of 2D slides, it is possible to run the learning process on a desktop
+machine with good GPU. In the long run, learning from full 3D volume still
+need to be run on clusters such as CHPC at the university. 
+
+I would expect to spend 2-3 weeks on learning the basics of deep learning and
+go through the tutorial on the website of LISA lab of Yoshua Bengio. While
+Bengio's lab focus on the application of language, their tutorial and code
+written with Python and Theano serves a good teaching material. After the 2-3
+learning, we should be able to write a simple multiple layer network with
+Python. Then we should start the experiments on real 2D imaging data. If we're
+lucky, we might be able to submit our preliminary work to AMIA CRI
+conference. However, since the early work will be focused on methods, for
+example, identifying interesting features from datasets, there will not be
+much contribution to the application, such as heart recognition or vessel
+detection tasks. 
+\section{Some Survey}
+
+\end{document}
+
+
+%%% Local Variables: 
+%%% mode: latex
+%%% TeX-master: t
+%%% End: 
