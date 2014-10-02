@@ -31,7 +31,7 @@ int main(int argc, char* argv[])
 
      try {
 	  if ( (vm.count("help")) | (argc == 1) ) {
-	       std::cout << "Usage: closing_filter [options]\n";
+	       std::cout << "Usage: inverse_distmap [options]\n";
 	       std::cout << mydesc << "\n";
 	       return 0;
 	  }

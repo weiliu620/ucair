@@ -8,6 +8,9 @@ IF(ITK_FOUND)
   INCLUDE(${ITK_USE_FILE})
 ENDIF(ITK_FOUND)
 
+find_package(VTK REQUIRED)
+include(${VTK_USE_FILE})
+
 option (USE_OMP
   "use openmp for parallel execution" on)
 if (USE_OMP)
@@ -179,6 +182,14 @@ if(Boost_FOUND)
     extract_roi
     )
 
+  # add_executable(vtkmesh2itkmesh
+  #   vtkmesh2itkmesh.cxx
+  #   )
+
+  # add_executable(kmeans
+  #   kmeans.cxx
+    )
+
   target_link_libraries(dijk utility ${ITK_LIBRARIES} ${Boost_LIBRARIES})
   target_link_libraries(test_hessian_filter utility ${ITK_LIBRARIES})
   target_link_libraries(multiscale_hessian utility ${ITK_LIBRARIES} ${Boost_LIBRARIES})
@@ -204,5 +215,7 @@ if(Boost_FOUND)
   target_link_libraries(est_density utility ${ITK_LIBRARIES} ${Boost_LIBRARIES})
   target_link_libraries(reg_speed utility ${ITK_LIBRARIES} ${Boost_LIBRARIES})
   target_link_libraries(extract_roi utility ${ITK_LIBRARIES} ${Boost_LIBRARIES})
+  # target_link_libraries(vtkmesh2itkmesh utility ${ITK_LIBRARIES} ${Boost_LIBRARIES} ${VTK_LIBRARIES})
+  # target_link_libraries(kmeans utility ${ITK_LIBRARIES} ${Boost_LIBRARIES})
 endif()
 
