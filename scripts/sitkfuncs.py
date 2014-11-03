@@ -2,6 +2,9 @@ import SimpleITK as sitk
 import numpy as np
 from scipy.stats import norm
 from scipy import ndimage
+import os
+import subprocess
+import scipy
 
 def est_density(in_file, seed_file, mask_file, out_file):
     """estimate the density of each pixel according to the predefied seed region.
@@ -64,7 +67,7 @@ def extract_comp(gmm_file, out_file):
     out_img = sitk.RelabelComponent(out_img, 50000);
     sitk.WriteImage(out_img, out_file)
 
-def extract_lung(comp_file, comp_ids, out_file, closing_size):
+def extract_lung(comp_file, comp_ids, out_file, closing_size = 5):
     """Extract the lung component(s) from multiple candidate components.
 
     Before running this func, user need to look at the connected component map
@@ -137,5 +140,92 @@ fill the hole.
     out_img = sitk.Or(out_img, flood_img)
     sitk.WriteImage(out_img, out_file)
 
+def lung_extraction_wrapper(in_dir, out_dir):
+    """
+    wrapper func for lung extraction.
 
+    The wrapper does 1) obtain a cylinder mask, 2) run GMM and 3) extract_comp. 
+
+    in_dir: dir contains raw CT volume.
+    out_dir: cotains subject folder which contains results.
+    """
+    all_files = [f for f in os.listdir(in_dir) if f.endswith('.nii.gz')]
+    all_files.sort()
+    print all_files
+
+    for sub_file in all_files:
+        sub_id, ext = os.path.splitext(sub_file) # remove gz
+        sub_id, ext = os.path.splitext(sub_id) # remove nii
+        print sub_id
+        # subprocess.call(['fslmaths', os.path.join(in_dir, sub_file), '-add', '2000', '-thr', '0', '-bin', os.path.join(out_dir, sub_id, 'round_mask.nii.gz')])
+        subprocess.call(['/home/weiliu/projects/vessel/build/gmm', '--input', os.path.join(in_dir, sub_file), '--seg', os.path.join(out_dir, sub_id, 'gmm_seg.nii.gz'), '--mask', os.path.join(out_dir, sub_id, 'round_mask.nii.gz'), '--ncomp', '3', '--mean', '-800', '0', '100', '--sigma', '100', '100', '100', '--prop', '0.33', '0.33', '0.33', '--maxit', '30'])
+        # extract_comp(os.path.join(out_dir, sub_id, 'gmm_seg.nii.gz'), os.path.join(out_dir, sub_id, 'cc.nii.gz'))
+
+
+def lung_extraction_subs(in_dir, sub_list, out_dir):
+    """
+    wrapper func for lung extraction. Same with lung_extraction_wrapper but with list of subjects as input. 
+
+    The wrapper does 1) obtain a cylinder mask, 2) run GMM and 3) extract_comp. 
+
+    in_dir: dir contains raw CT volume.
+    sub_list: list of subject raw CT files.
+    out_dir: cotains subject folder which contains results.
+    """
+    all_files = sub_list
+    all_files.sort()
+    print all_files
+
+    for sub_file in all_files:
+        sub_id, ext = os.path.splitext(sub_file) # remove gz
+        sub_id, ext = os.path.splitext(sub_id) # remove nii
+        print sub_id
+        # subprocess.call(['fslmaths', os.path.join(in_dir, sub_file), '-add', '2000', '-thr', '0', '-bin', os.path.join(out_dir, sub_id, 'round_mask.nii.gz')])
+        subprocess.call(['/home/weiliu/projects/vessel/build/gmm', '--input', os.path.join(in_dir, sub_file), '--seg', os.path.join(out_dir, sub_id, 'gmm_seg.nii.gz'), '--mask', os.path.join(out_dir, sub_id, 'round_mask.nii.gz'), '--ncomp', '3', '--mean', '-800', '0', '100', '--sigma', '100', '100', '100', '--prop', '0.33', '0.33', '0.33', '--maxit', '30'])
+        # extract_comp(os.path.join(out_dir, sub_id, 'gmm_seg.nii.gz'), os.path.join(out_dir, sub_id, 'cc.nii.gz'))
+
+
+def naive_lung_extractor(ct_file, out_file, closing_size = 5, lower_th = -1100, upper_th = -600):
+    """
+    Per Brian's request, rewrite the lung extraction in pure python. 
+
+    GMM is really not necessary for lung extraction. This routine tries to extract the lung without GMM.
+    ct_file: input CT volume.
+    out_file: binary lung segmentation.
+    closing_size: morphological closing filter size (in voxel). Vessels smaller than closing_size will be mergeed into lung region. 
+    lower_th/upper_th: low and upper threshold for lung region. Voxels between [lower_th, upper_th] are believed to be lung, and the label is set to 1 to get a binary map.
+    """
     
+    ct_img = sitk.ReadImage(ct_file)
+    ct_vol = sitk.GetArrayFromImage(ct_img)
+
+    # threshold to get binary map (may include both lung and air)
+    out_img = sitk.BinaryThreshold(ct_img, lower_th, upper_th)
+
+    # separate lung and out-of-body air by different labels.
+    out_img = sitk.ConnectedComponent(out_img)
+
+    # ret rid of small components.
+    out_img = sitk.RelabelComponent(out_img, 50000);
+    out_vol = sitk.GetArrayFromImage(out_img)
+
+    # get list of labels.
+    index = np.unique(out_vol)
+
+    # compute mean for each component/label.
+    means = scipy.ndimage.measurements.mean(ct_vol, out_vol, index);
+
+    # lung should be in two of the largest. The mean intensity of lung component
+    # should be larger than the out-of-body air component.
+    if means[1] > means[2]:
+        lung_label = 1
+    else:
+        lung_label = 2
+
+    # get the binary map for the lung
+    out_img = sitk.BinaryThreshold(out_img, lung_label, lung_label)
+
+    # closing
+    out_img = sitk.BinaryMorphologicalClosing(out_img, closing_size)
+
+    sitk.WriteImage(out_img, out_file)
